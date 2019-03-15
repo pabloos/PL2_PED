@@ -1,0 +1,26 @@
+(* llamada a funcion*)
+(* se tiene que detectar error semántico al llamar al procedimiento (aunque no se haya implementado el código final de subprogramas) usando más parámetros de los necesarios.*)
+
+
+MODULE errorSemanticoTres;
+
+  VAR suma : INTEGER;
+  		a1:INTEGER;
+  		b1:INTEGER;
+		c1:INTEGER;
+  
+  PROCEDURE Sumar (VAR a: INTEGER; VAR b: INTEGER) : INTEGER;
+  	VAR s: INTEGER;
+ 	BEGIN
+ 		s := a+b;
+ 		RETURN s; 	
+ 	END Sumar; 	
+  
+  BEGIN
+    a1:=2;
+    b1:=3;
+    
+    (*a continuación se tiene que detectar el error semántico*)
+    suma := Sumar(a1,b1,c1);
+    
+  END errorSemanticoTres;

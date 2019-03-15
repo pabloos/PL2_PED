@@ -1,0 +1,29 @@
+MODULE errorSemanticoDos;
+
+  
+
+(* se tiene que detectar error semántico al intentar usar la variable division sin haberla  declarado*)
+
+  CONST A = 10;
+	B = 20;
+
+  VAR 
+	a1:INTEGER;
+	b1:INTEGER;
+	bol1 : BOOLEAN;
+	
+	bol3 : BOOLEAN;
+  BEGIN
+
+    a1:=A;
+    b1:=2;
+
+    (*a continuación se tiene que detectar el error semántico*)
+    division:=a1/b1;
+
+    
+    bol1:=TRUE;
+
+    
+	    
+  END errorSemanticoDos;

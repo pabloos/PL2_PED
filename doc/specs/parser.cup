@@ -1,0 +1,415 @@
+package compiler.syntax;
+
+// Declaración de importaciones 
+//(No modificar las proporcionadas. Se pueden agregar mas)
+
+import java_cup.runtime.Symbol;
+import java.util.*;
+
+import es.uned.lsi.compiler.lexical.*;
+import es.uned.lsi.compiler.code.*;
+import es.uned.lsi.compiler.intermediate.*;
+import es.uned.lsi.compiler.semantic.*;
+import es.uned.lsi.compiler.semantic.symbol.*;
+import es.uned.lsi.compiler.semantic.type.*;
+import es.uned.lsi.compiler.syntax.*;
+
+import compiler.CompilerContext;
+import compiler.lexical.*;
+import compiler.syntax.nonTerminal.*;
+import compiler.semantic.*;
+import compiler.semantic.symbol.*;
+import compiler.semantic.type.*;
+import compiler.intermediate.*;
+import compiler.code.*;
+
+
+
+// Declaración del código de usuario
+
+action code   {:
+	
+	SyntaxErrorManager   syntaxErrorManager   = CompilerContext.getSyntaxErrorManager();
+	SemanticErrorManager semanticErrorManager = CompilerContext.getSemanticErrorManager ();
+	ScopeManagerIF       scopeManager         = CompilerContext.getScopeManager ();
+	FinalCodeFactoryIF   finalCodeFactory     = CompilerContext.getFinalCodeFactory ();
+
+:}	
+
+parser code {:
+	SyntaxErrorManager syntaxErrorManager = CompilerContext.getSyntaxErrorManager();
+	
+	public void syntax_error(Symbol symbol)
+	{ 
+	    Token token = (Token) symbol.value;
+	    syntaxErrorManager.syntaxError ("Error sintactico", token);	    
+	}
+		
+	public void unrecovered_syntax_error(java_cup.runtime.Symbol symbol)
+	{	
+	    Token token = (Token) symbol.value;
+	    syntaxErrorManager.syntaxFatalError ("Error fatal", token);
+	}
+:}
+
+
+// Declaración de terminales
+terminal Token TLTRUE, TLFALSE, TLINT, TLSTRING, TIDENTIFICADOR;
+terminal Token TAND, TNOT;
+terminal Token TBEGIN, TEND;
+terminal Token TIF, TTHEN, TELSE;
+terminal Token TMODULE, TPROCEDURE, TRETURN;
+terminal Token TDO, TWHILE;
+terminal Token TWRITESTRING, TWRITEINT, TWRITELN;
+terminal Token TBOOLEAN, TCONST, TINTEGER, TRECORD, TTYPE, TVAR;
+terminal Token TPTOCOMA, TPARI, TPARD, TCOMA, TDOSPTS, TIGUAL;
+terminal Token TSUMA, TDIVIDE, TASSIGN, TMENOR, TDISTINTO, TPUNTO;
+
+
+
+
+// Declaración de no terminales
+non terminal  					program;
+non terminal Axiom		axiom;
+
+
+non terminal           Cte      ctes;
+non terminal           Cte ctesLista;
+non terminal              Cte cte;
+non terminal            Cte cteValor;
+non terminal                tipos;
+non terminal           tiposLista;
+non terminal            Tipo tipo;
+non terminal             registro;
+non terminal            regCampos;
+non terminal             regCampo;
+non terminal                 vars;
+non terminal            varsLista;
+non terminal              Var var;
+non terminal              varTipo;
+non terminal                 subs;
+non terminal      SubDecl subDecl;
+non terminal            subParams;
+non terminal      subParamsCuerpo;
+non terminal               subPar;
+non terminal            subReturn;
+non terminal           sentencias;
+non terminal                 sent;
+non terminal            sentAsign;
+non terminal               sentES;
+non terminal           sentReturn;
+non terminal             sentCall;
+non terminal       sentCallParams;
+non terminal               sentIf;
+non terminal             sentElse;
+non terminal            sentWhile;
+non terminal            expresion;
+non terminal        tipoPrimitivo;
+non terminal         cuerpoModulo;
+non terminal          finalModulo;
+non terminal          varSeqDeIds;
+non terminal            ntPtoComa;
+
+
+
+
+// Declaración de relaciones de precedencia (de menos a más)
+precedence nonassoc TMENOR, TDISTINTO;
+precedence left     TSUMA;
+precedence left     TDIVIDE, TAND;
+precedence right    TNOT;
+precedence left     TPUNTO, TPARI, TPARD;
+
+
+// Declaración de reglas de producción
+// El proceso de análisis ha de empezar emitiendo el mensaje 'Starting parsing...' y
+// finalizar emitiendo el mensaje 'Parsing process finished' en el caso de no existir 
+// ningún error no recuperable.
+
+start with program;
+
+program ::= 
+  {: syntaxErrorManager.syntaxInfo ("Starting parsing..."); 
+	
+	
+  :}
+  axiom:ax
+  {: 
+  		// No modificar esta estructura, aunque se pueden añadir más acciones semánticas
+  		
+  		//List intermediateCode = ax.getIntermediateCode ();
+  		//finalCodeFactory.create (intermediateCode);
+
+  		// En caso de no comentarse las dos sentencias anteriores puede generar una excepcion
+  		// en las llamadas a cupTest si el compilador no está completo. Esto es debido a que 
+  		// aún no se tendrá implementada la generación de código intermedio ni final.
+  		// Para la entrega final deberán descomentarse y usarse.
+  		
+  		syntaxErrorManager.syntaxInfo ("Parsing process ended.");
+  :};
+
+
+
+
+
+axiom ::=
+        TMODULE
+            
+        TIDENTIFICADOR:id ntPtoComa cuerpoModulo {: System.out.println(id.getLexema()); :}
+        | TMODULE error
+            
+    ;
+
+
+//
+// DEFINICIÓN DE CONSTANTES
+//
+ctes ::=
+        TCONST ctesLista
+        | /*nada*/          
+    ;
+
+ctesLista ::=
+        cte ctesLista
+            
+        | cte {: Cte c = new Cte(); :}
+            
+    ;
+cte ::=
+        TIDENTIFICADOR TIGUAL cteValor ntPtoComa            
+        | error
+            
+    ;
+cteValor ::=
+        TLTRUE      
+        | TLFALSE   
+        | TLINT
+    ;
+
+
+//
+// DEFINICIÓN DE TIPOS
+//
+tipos ::=
+        TTYPE tiposLista
+        | /*nada*/
+	;
+
+tiposLista ::= tipo tiposLista            
+        | tipo
+	;
+
+tipo ::= TIDENTIFICADOR TIGUAL registro ntPtoComa
+            
+        | error
+            
+    ;
+
+registro ::=
+        TRECORD regCampos TEND
+            
+        | error
+            
+    ;
+regCampos ::=
+        regCampo regCampos
+            
+        | regCampo
+            
+    ;
+regCampo ::=
+        TIDENTIFICADOR TDOSPTS tipoPrimitivo ntPtoComa
+            
+        | error
+            
+    ;
+
+
+//
+// DEFINICIÓN DE VARIABLES
+//
+vars ::=
+        TVAR varsLista   
+        | /*Nada*/          
+    ;
+varsLista ::=
+        var varsLista
+            
+        | var
+             
+    ;
+var ::=
+        varSeqDeIds TDOSPTS varTipo ntPtoComa
+            
+        | error
+            
+    ;
+varTipo ::=
+        tipoPrimitivo    
+        | TIDENTIFICADOR 
+    ;
+
+
+//
+// DEFINICIÓN DE SUBPROGRAMAS
+//
+subs ::=
+        subs TPROCEDURE subDecl cuerpoModulo
+            
+        | //Nada
+            
+    ;
+subDecl ::= TIDENTIFICADOR          
+            subParams subReturn ntPtoComa
+            
+        | error
+            
+     ;
+subParams::= 
+        TPARI TPARD                         
+        | TPARI subParamsCuerpo TPARD    
+        | /*nada*/                          
+    ;
+subParamsCuerpo::=
+        subPar ntPtoComa subParamsCuerpo
+            
+        | subPar
+            
+    ;
+subPar::= 
+        TVAR varSeqDeIds TDOSPTS varTipo
+            
+        | error
+            
+    ;
+subReturn::=
+        TDOSPTS tipoPrimitivo
+            
+        | //Nada
+            
+        | error
+            
+    ;
+
+
+
+//
+// DEFINICIÓN DE SENTENCIAS
+//
+sentencias ::= 
+        sent ntPtoComa sentencias
+            
+        | /*Nada*/
+            
+        | error
+            
+    ;
+sent::= sentAsign           
+        | sentES
+        | sentReturn
+        | sentIf TEND       
+        | sentWhile TEND    
+        | sentCall
+        | error
+            
+    ;
+sentAsign::=
+        TIDENTIFICADOR TASSIGN expresion
+            
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TASSIGN expresion
+            
+    ;
+
+sentWhile::= TWHILE expresion TDO sentencias         ;
+
+sentIf::=         TIF expresion TTHEN sentencias sentElse;
+
+sentElse::=
+        TELSE sentencias
+            
+        | //Nada
+            
+    ;
+sentES::=
+        TWRITESTRING TPARI TLSTRING TPARD 
+        | TWRITEINT TPARI expresion TPARD  
+        | TWRITELN                           
+    ;
+sentReturn::=
+        TRETURN expresion
+            
+    ;
+
+sentCall::=
+        TIDENTIFICADOR TPARI sentCallParams TPARD  
+        | TIDENTIFICADOR                             
+    ;
+sentCallParams::= 
+        TIDENTIFICADOR
+            
+        | TIDENTIFICADOR TCOMA sentCallParams
+            
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR
+            
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TCOMA sentCallParams
+            
+        | /*Nada*/
+            
+        | error
+            
+    ;
+
+
+
+expresion::=
+        TNOT expresion                     
+        | TPARI expresion TPARD              
+        | expresion TDIVIDE expresion  
+        | expresion TSUMA expresion    
+        | expresion TAND expresion     
+        | expresion TMENOR expresion   
+        | expresion TDISTINTO expresion
+        | TLINT 
+        | TLTRUE
+        | TLFALSE
+        | TIDENTIFICADOR
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR                                               
+        | TIDENTIFICADOR TPARI sentCallParams TPARD                                               
+        | error
+            
+    ;
+
+
+
+
+//
+// Reglas auxiliares
+//
+tipoPrimitivo ::=
+        TINTEGER
+            
+        | TBOOLEAN
+            
+    ;
+varSeqDeIds ::=
+        TIDENTIFICADOR
+            
+        | TIDENTIFICADOR TCOMA varSeqDeIds
+            
+    ;
+
+cuerpoModulo ::= 
+        ctes tipos vars subs TBEGIN finalModulo
+            
+        | error
+            
+    ;
+finalModulo ::= 
+        sentencias TEND TIDENTIFICADOR ntPtoComa
+            
+        | error
+            
+    ;
+ntPtoComa ::= //Varios ';' seguidos deben ser interpretados como uno solo.        
+        TPTOCOMA | TPTOCOMA ntPtoComa
+    ;

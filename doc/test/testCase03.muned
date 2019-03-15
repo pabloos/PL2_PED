@@ -1,0 +1,7 @@
+MODULE tres;
+(* salida por pantalla suma de enteros*)
+(* se tiene que imprimir un 5*)
+
+  BEGIN
+    WRITEINT(2+3);
+  END tres;

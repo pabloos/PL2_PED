@@ -1,0 +1,7 @@
+MODULE uno;
+(* programa vacio*)
+(* no se debe de imprimir nada*)
+
+  BEGIN
+
+  END uno;
