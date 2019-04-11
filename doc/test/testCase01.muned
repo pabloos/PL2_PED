@@ -2,6 +2,34 @@ MODULE uno;
 (* programa vacio*)
 (* no se debe de imprimir nada*)
 
+CONST TAMANIO = 10;
+	  COSAS = TRUE;
+	  quizaz = FALSE;
+		
+TYPE booleano = RECORD 
+				    campo1: INTEGER;
+					campo2: BOOLEAN;
+			    END;
+
+VAR peso, altura: INTEGER;
+	alto, gordo: BOOLEAN;
+	grueso: booleano;
+
+PROCEDURE fun1: INTEGER;
+BEGIN
+	RETURN altura;
+
+END proc1;
+
+PROCEDURE fun2 (VAR v, n: INTEGER; VAR reg: booleano): INTEGER;
+BEGIN
+	RETURN altura;
+END fun;
+
+PROCEDURE proc (VAR v, n: INTEGER; VAR reg: booleano);
+BEGIN
+END proc;
+
   BEGIN
 
   END uno;

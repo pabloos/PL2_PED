@@ -14,7 +14,8 @@ import es.uned.lsi.compiler.semantic.type.TypeIF;
 public class SymbolConstant
     extends SymbolBase
 {
-    
+   int valor;
+   int desplazamiento;
     /**
      * Constructor for SymbolConstant.
      * @param scope The declaration scope.
@@ -26,5 +27,27 @@ public class SymbolConstant
                            TypeIF type)
     {
         super (scope, name, type);
-    } 
+    }
+    public SymbolConstant (ScopeIF scope,
+                           String name,
+                           TypeIF type,
+                           int desplazamiento)
+    {
+        super (scope, name, type);
+        this.desplazamiento=desplazamiento;
+    }
+     public int getValue() {
+        return valor;
+    }
+
+    public void setValue(int valor) {
+        this.valor = valor;
+    }
+    public int getDesplazamiento() {
+        return desplazamiento;
+    }
+
+    public void setDesplazamiento(int desplazamiento) {
+        this.desplazamiento = desplazamiento;
+    }
 }

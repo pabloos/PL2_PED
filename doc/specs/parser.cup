@@ -23,7 +23,7 @@ import compiler.semantic.type.*;
 import compiler.intermediate.*;
 import compiler.code.*;
 
-
+import compiler.semantic.utils.*;
 
 // Declaración del código de usuario
 
@@ -65,53 +65,46 @@ terminal Token TBOOLEAN, TCONST, TINTEGER, TRECORD, TTYPE, TVAR;
 terminal Token TPTOCOMA, TPARI, TPARD, TCOMA, TDOSPTS, TIGUAL;
 terminal Token TSUMA, TDIVIDE, TASSIGN, TMENOR, TDISTINTO, TPUNTO;
 
-
-
-
 // Declaración de no terminales
-non terminal  					program;
+non terminal  		    program;
 non terminal Axiom		axiom;
 
-
-non terminal           Cte      ctes;
-non terminal           Cte ctesLista;
+non terminal                 ctes;
+non terminal            ctesLista;
 non terminal              Cte cte;
-non terminal            Cte cteValor;
-non terminal                tipos;
-non terminal           tiposLista;
-non terminal            Tipo tipo;
-non terminal             registro;
-non terminal            regCampos;
-non terminal             regCampo;
+non terminal       Token cteValor;
+non terminal          Lista tipos;
+non terminal     Lista tiposLista;
+non terminal      TypeRecord tipo;
+non terminal       Lista registro;
+non terminal      Lista regCampos;
+non terminal CampoRegistro regCampo;
 non terminal                 vars;
 non terminal            varsLista;
-non terminal              Var var;
-non terminal              varTipo;
+non terminal                  var;
+non terminal        String varTipo;
 non terminal                 subs;
-non terminal      SubDecl subDecl;
-non terminal            subParams;
-non terminal      subParamsCuerpo;
-non terminal               subPar;
-non terminal            subReturn;
-non terminal           sentencias;
-non terminal                 sent;
-non terminal            sentAsign;
-non terminal               sentES;
-non terminal           sentReturn;
-non terminal             sentCall;
-non terminal       sentCallParams;
-non terminal               sentIf;
-non terminal             sentElse;
-non terminal            sentWhile;
-non terminal            expresion;
-non terminal        tipoPrimitivo;
-non terminal         cuerpoModulo;
-non terminal          finalModulo;
-non terminal          varSeqDeIds;
+non terminal             SubDecl subDecl;
+non terminal      Lista subParams;
+non terminal Lista subParamsCuerpo;
+non terminal         Lista subPar;
+non terminal     String subReturn;
+non terminal        BloqueSentencias   sentencias;
+non terminal       BloqueSentencias          sent;
+non terminal      BloqueSentencias      sentAsign;
+non terminal      BloqueSentencias         sentES;
+non terminal    BloqueSentencias       sentReturn;
+non terminal    BloqueSentencias         sentCall;
+non terminal   BloqueSentencias    sentCallParams;
+non terminal    BloqueSentencias           sentIf;
+non terminal       BloqueSentencias      sentElse;
+non terminal         BloqueSentencias   sentWhile;
+non terminal  Expresion expresion;
+non terminal String tipoPrimitivo;
+non terminal        BloqueSentencias cuerpoModulo;
+non terminal         BloqueSentencias finalModulo;
+non terminal    Lista varSeqDeIds;
 non terminal            ntPtoComa;
-
-
-
 
 // Declaración de relaciones de precedencia (de menos a más)
 precedence nonassoc TMENOR, TDISTINTO;
@@ -119,7 +112,6 @@ precedence left     TSUMA;
 precedence left     TDIVIDE, TAND;
 precedence right    TNOT;
 precedence left     TPUNTO, TPARI, TPARD;
-
 
 // Declaración de reglas de producción
 // El proceso de análisis ha de empezar emitiendo el mensaje 'Starting parsing...' y
@@ -149,264 +141,724 @@ program ::=
   :};
 
 
+axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {: 
+            String programName = id.getLexema();
+            scopeManager.openScope(programName); 
+  		
+            ScopeIF scope = scopeManager.getCurrentScope();
 
+			TypeTableIF tablaTipos = scope.getTypeTable();
 
+            // aniadimos los tipos simples
+            TypeSimple tipoBooleano = new TypeSimple(scope);
+            tipoBooleano.setName("BOOLEAN");
+			tablaTipos.addType(tipoBooleano);
 
-axiom ::=
-        TMODULE
+			TypeSimple tipoEntero = new TypeSimple(scope);
+            tipoEntero.setName("INTEGER");
+            tablaTipos.addType(tipoEntero);
             
-        TIDENTIFICADOR:id ntPtoComa cuerpoModulo {: System.out.println(id.getLexema()); :}
+        :} cuerpoModulo 
         | TMODULE error
             
     ;
 
-
 //
 // DEFINICIÓN DE CONSTANTES
 //
-ctes ::=
-        TCONST ctesLista
-        | /*nada*/          
-    ;
+ctes ::= TCONST {: 
+            ScopeIF scope = scopeManager.getCurrentScope();
 
-ctesLista ::=
-        cte ctesLista
-            
-        | cte {: Cte c = new Cte(); :}
-            
-    ;
-cte ::=
-        TIDENTIFICADOR TIGUAL cteValor ntPtoComa            
-        | error
-            
-    ;
-cteValor ::=
-        TLTRUE      
-        | TLFALSE   
-        | TLINT
-    ;
+            semanticErrorManager.semanticDebug("Analizando las constantes del ambito " + scope.getName());
 
+        :} ctesLista  
+        | /*nada*/ ;
+
+ctesLista ::= cte ctesLista | cte;
+
+cte ::= TIDENTIFICADOR:id TIGUAL cteValor:value {: 
+            String identificador = id.getLexema();
+            String val = value.getLexema();
+            String line = String.valueOf(value.getLine());
+            String column = String.valueOf(value.getColumn());
+
+            String typeOfValue = Utilidades.getTypeOfValue(val);
+
+            if (typeOfValue.equals("noValidType")) {
+                semanticErrorManager.semanticFatalError("La constante " + identificador + " no tiene un tipo valido");
+            }
+
+            TypeIF type = scopeManager.searchType(typeOfValue);
+
+            Cte constante = new Cte(identificador, type, val, line, column);
+
+            ScopeIF scope = scopeManager.getCurrentScope();
+            SymbolTableIF tablaSimbolos = scope.getSymbolTable();
+
+            // guardamos el simbolo en la tabla y comprobamos que no existe otro con el mismo nombre
+            if (!tablaSimbolos.containsSymbol(constante.getName()) ){		
+                semanticErrorManager.semanticDebug("Aniadiendo la constantes " + constante.getName() + " a la tabla de simbolos");
+
+                SymbolConstant simboloVar = new SymbolConstant(scope, constante.getName(), type);
+                tablaSimbolos.addSymbol(constante.getName(), simboloVar);                                       	
+            } else {
+                semanticErrorManager.semanticFatalError ("210. La constante: " + constante.getName() +" en [" + constante.getLine() + ":" + constante.getColumn() + "] ya ha sido definida.");
+            }
+
+            RESULT = constante;
+        :} ntPtoComa
+
+    | error
+            
+    ;
+cteValor ::= TLTRUE:bool {: RESULT=bool; :}      
+            | TLFALSE:bool {: RESULT=bool; :} 
+            | TLINT:entero {: RESULT=entero; :} 
+    ;
 
 //
 // DEFINICIÓN DE TIPOS
 //
-tipos ::=
-        TTYPE tiposLista
+tipos ::= TTYPE {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+
+            semanticErrorManager.semanticDebug("Analizando los tipos del ambito " + scope.getName());
+
+        :} tiposLista 
         | /*nada*/
 	;
 
-tiposLista ::= tipo tiposLista            
-        | tipo
+tiposLista ::= tipo:tipo tiposLista:lista /* {:
+            lista.add(tipo);
+            RESULT = lista;
+        :}    */
+        | /* tipo:tipo {:
+            Lista lista = new Lista();
+            lista.add(tipo);
+            RESULT = lista;
+        :} */
 	;
 
-tipo ::= TIDENTIFICADOR TIGUAL registro ntPtoComa
+tipo ::= TIDENTIFICADOR:id TIGUAL registro:lista {:
+            String identificador = id.getLexema();
+
+            ScopeIF scope = scopeManager.getCurrentScope();
+			TypeTableIF tablaTipos = scope.getTypeTable();
+
+            //creamos un nuevo tipo registro
+            TypeRecord tipoRegistro = new TypeRecord(scope, identificador);
             
+            HashMap<String, CampoRegistro> campos = tipoRegistro.getTablaCampos();
+
+            for(int i = 0; i < lista.size(); i++) {
+                CampoRegistro campo = (CampoRegistro) lista.get(i);
+                
+                campos.put(campo.getName(), campo);
+            }
+
+            if (!scopeManager.containsType(identificador)) {
+                semanticErrorManager.semanticDebug("Aniadiendo a la tabla de tipos el tipo " + identificador);
+
+                tablaTipos.addType(tipoRegistro);
+            } else {
+                semanticErrorManager.semanticFatalError ("210. El tipo: " + identificador + " en [" + id.getLine() + ":" + id.getColumn() + "] ya ha sido definida.");
+            }
+
+            RESULT = tipoRegistro; //dado que el grupo A solo tiene los registros como tipos para crear todo tipo compuesto sera un registro
+
+        :} ntPtoComa
         | error
             
     ;
 
-registro ::=
-        TRECORD regCampos TEND
+registro ::= TRECORD regCampos:lista {: RESULT = lista; :} TEND
             
         | error
             
     ;
-regCampos ::=
-        regCampo regCampos
+regCampos ::= regCampo:reg regCampos:lista {:
+                lista.add(reg);
+                RESULT = lista;
+            :}
             
-        | regCampo
+        | regCampo:reg {:
+            Lista lista = new Lista();
+            lista.add(reg);
+            RESULT = lista;
+        :}
             
     ;
-regCampo ::=
-        TIDENTIFICADOR TDOSPTS tipoPrimitivo ntPtoComa
-            
-        | error
-            
-    ;
+regCampo ::= TIDENTIFICADOR:id TDOSPTS tipoPrimitivo:tipo {:
+            String identificador = id.getLexema();
+            TypeIF tipoPrimitivo = scopeManager.searchType(tipo);
 
+            if(!tipo.equals("BOOLEAN") && !tipo.equals("INTEGER")) {
+                semanticErrorManager.semanticFatalError ("210. El tipo en el registro : " + identificador + "[" + id.getLine() + ":" + id.getColumn() + "] no es bool o int.");
+            }
+
+            CampoRegistro reg = new CampoRegistro(identificador, tipoPrimitivo);
+
+            RESULT = reg;
+        :} ntPtoComa
+            
+        | error
+            
+    ;
 
 //
 // DEFINICIÓN DE VARIABLES
 //
-vars ::=
-        TVAR varsLista   
+vars ::= TVAR {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+
+            semanticErrorManager.semanticDebug("Analizando las variables del ambito " + scope.getName());
+
+        :} varsLista 
         | /*Nada*/          
     ;
-varsLista ::=
-        var varsLista
-            
-        | var
-             
+
+varsLista ::= var varsLista
+            | var        
     ;
-var ::=
-        varSeqDeIds TDOSPTS varTipo ntPtoComa
+
+var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+            TypeTableIF tablaTipos = scope.getTypeTable();
+            SymbolTableIF tablaSimbolos = scope.getSymbolTable();
+        
+            if (!tablaTipos.containsType(tipo)) {
+                semanticErrorManager.semanticFatalError("el tipo " + tipo + " no ha sido declarado");
+            }
+
+            for(int i = 0; i < lista.size(); i++) {
+                Var v = (Var) lista.get(i);
+
+                String name = v.getName();
+
+                // comprobamos que la variable no ha sido declarada anteriormente y la guardamos en la tabla de simbolos
+                if (!scope.getSymbolTable().containsSymbol(name) ){		
+                    semanticErrorManager.semanticDebug("Anadiendo la variable " + name + " a la tabla de simbolos");
+                    
+                    SymbolVariable simboloVar = new SymbolVariable(scope, name, scopeManager.searchType(tipo));
+                    tablaSimbolos.addSymbol(name, simboloVar);                                       	
+                } else {
+                    semanticErrorManager.semanticFatalError ("210. La variable: " + name + " en [" + v.getLine() + ":" + v.getColumn() + "] ya ha sido definida.");
+                }
+            }
+
+            RESULT = lista;
+
+        :} ntPtoComa
             
         | error
             
     ;
-varTipo ::=
-        tipoPrimitivo    
-        | TIDENTIFICADOR 
-    ;
-
+varTipo ::= tipoPrimitivo:tip {: RESULT = tip; :} 
+            | TIDENTIFICADOR:tipo {: RESULT = tipo.getLexema(); :}
+        ;
 
 //
 // DEFINICIÓN DE SUBPROGRAMAS
 //
-subs ::=
-        subs TPROCEDURE subDecl cuerpoModulo
-            
+subs ::= subs TPROCEDURE {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+
+            semanticErrorManager.semanticDebug("Analizando los subprogramas del ambito " + scope.getName());
+
+        :} subDecl:subDecl cuerpoModulo:bloque {:
+            boolean esfuncion = subDecl.getEsFuncion();
+
+            boolean tieneDevuelve = bloque.getTieneDevuelve();
+            System.out.println(esfuncion);
+
+            System.out.println(tieneDevuelve);
+
+            if((subDecl.getEsFuncion() && !bloque.getTieneDevuelve()) || (!subDecl.getEsFuncion() && bloque.getTieneDevuelve())) {
+                semanticErrorManager.semanticFatalError("Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
+            }
+        :}
         | //Nada
-            
     ;
-subDecl ::= TIDENTIFICADOR          
-            subParams subReturn ntPtoComa
+
+subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
+                String nombreFuncion = identificador.getLexema();
+
+                if (scopeManager.containsSymbol(nombreFuncion)) {
+				    semanticErrorManager.semanticFatalError("350. La funcion "+identificador.getLexema()+" en la linea: "+identificador.getLine()+" ya ha sido declarada");
+                } else {     
+                    // Crear FUNCION en ambito
+                    ScopeIF scope = scopeManager.getCurrentScope();
+                    TypeTableIF tablaTipos = scope.getTypeTable();
+                    SymbolTableIF tablaSimbolos = scope.getSymbolTable();
+
+                    // a�adir funcion a TT
+                    TypeFunction tipoFuncion = new TypeFunction(scope, nombreFuncion);
+                    tablaTipos.addType(nombreFuncion, tipoFuncion);
+                                
+                    // aniadir funcion a TS
+                    SymbolFunction simboloFunc = new SymbolFunction(scope, nombreFuncion, tablaTipos.getType(nombreFuncion));
+                    semanticErrorManager.semanticDebug("Aniadiendo el subprograma " + nombreFuncion + " a la tabla de simbolos");
+                    tablaSimbolos.addSymbol(nombreFuncion, simboloFunc);
+
+                    SubDecl declaracion;
+
+                    ///////////////////////////////
+                    // NUEVO ambito para ser usado dentro funcion y tabla TS y TT
+				    scopeManager.openScope(nombreFuncion); 
+
+                    tablaTipos = scopeManager.getCurrentScope().getTypeTable();
+				    tablaSimbolos = scopeManager.getCurrentScope().getSymbolTable();
+
+                    if(tipo.equals("noType")) {  // el subprograma es un procedimiento
+                        declaracion = new SubDecl(false);
+                        tipoFuncion.setTipoRetorno(null);
+                        System.out.println(identificador + " es un procedimiento");
+                    } else {                     // es una funcion
+                        declaracion = new SubDecl(true);
+                        tipoFuncion.setTipoRetorno(scopeManager.searchType(tipo));  
+                        System.out.println(identificador + " es una funcion");
+                    }
+                    
+    				ArrayList parametros = new ArrayList(Utilidades.ordenaParametros(lista));
+
+                    for (int i = 0; i < parametros.size(); i++) {
+                        Parametro p = (Parametro) parametros.get(i);
+                          
+                        p.setReferencia(true); // en el tipo son todos por referencia
+
+                        SymbolVariable simboloVar = new SymbolVariable (scopeManager.getCurrentScope(), p.getNombre(), p.getTipo());//, despl);
+                        // despl++;
+                        
+                        // Creo lista ordenada de parametros en el PROCEDIMIENTO.
+                        tipoFuncion.setTypeParametro(p.getColumna(), p.getTipo()); 
+
+                        // Fijar paso parametros Ref/Valor en Symbolvar
+                        simboloVar.setReferencia(p.getReferencia());
+                        tablaSimbolos.addSymbol(p.getNombre(), simboloVar);                                  	
+                        tipoFuncion.setParametro(simboloVar);
+                    }
+
+                    //////////////////
+                    //cerramos ambito
+                    scopeManager.closeScope();
+
+                    RESULT = declaracion;
+                }
+            :} ntPtoComa
             
         | error
             
-     ;
-subParams::= 
-        TPARI TPARD                         
-        | TPARI subParamsCuerpo TPARD    
-        | /*nada*/                          
     ;
-subParamsCuerpo::=
-        subPar ntPtoComa subParamsCuerpo
+subParams ::= TPARI TPARD {: 
+                RESULT = new Lista(); 
+            :}      
+            | TPARI subParamsCuerpo:lista {: 
+                RESULT = lista; 
+            :} TPARD    
+            | /*nada*/ {: 
+                RESULT = new Lista(); 
+            :}                         
+        ;
+
+subParamsCuerpo ::= subPar:listaParametros ntPtoComa subParamsCuerpo:lista {: 
+                        for (int i = 0; i < listaParametros.size(); i++) {
+                            lista.add(listaParametros.get(i));
+                        }
+                        
+                        RESULT = lista;
+                    :}
             
-        | subPar
-            
-    ;
-subPar::= 
-        TVAR varSeqDeIds TDOSPTS varTipo
-            
-        | error
-            
-    ;
-subReturn::=
-        TDOSPTS tipoPrimitivo
-            
-        | //Nada
-            
-        | error
+                | subPar:listaParametros {:
+                    RESULT = listaParametros;
+                 :}
             
     ;
 
+subPar ::= TVAR varSeqDeIds:lista TDOSPTS varTipo:tipo {:
+            Lista list = (Lista) lista;
 
+            Lista listaParametros = new Lista();
+
+            for (int i = 0; i < list.size(); i++) {
+                Var v = (Var) list.get(i);
+
+                String name = v.getName();
+
+                Parametro parametro = new Parametro();
+
+                TypeIF tip = scopeManager.searchType(tipo);
+
+                parametro.setNombre(name);
+                parametro.setTipo(tip);
+                parametro.setColumna(v.getColumn());
+
+                listaParametros.add(parametro);
+            }
+
+            RESULT = listaParametros;
+
+        :}
+            
+        | error
+            
+    ;
+subReturn ::= TDOSPTS:s tipoPrimitivo:tipo {: RESULT = tipo; :}
+            | {: RESULT = "noType"; :} //Nada 
+            | error
+    ;
 
 //
 // DEFINICIÓN DE SENTENCIAS
 //
-sentencias ::= 
-        sent ntPtoComa sentencias
+
+    // las sentencias devuelven bloques de sentencias que contienen el código intermedio
+
+sentencias ::= sent:sent ntPtoComa sentencias:blq {:
+                    BloqueSentencias bloque = new BloqueSentencias();
+
+                    // si alguno de los bloques 
+                    if (blq.getTieneDevuelve() || sent.getTieneDevuelve()) {
+                        bloque.setTieneDevuelve(true);
+                    }
+
+                    IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
+                    cb.addQuadruples(sent.getIntermediateCode());
+                    cb.addQuadruples(blq.getIntermediateCode());
+                    List code = cb.create();
+                    bloque.setIntermediateCode(code);
+				
+                	RESULT=bloque;
+                :}
+                    
+                | /*Nada*/ {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+                    
+                | error
             
-        | /*Nada*/
+    ;
+sent ::= sentAsign:sent {: RESULT = sent; :}          //LISTO
+        | sentES:sent {: RESULT = sent; :}   
+        | sentReturn:sent {: RESULT = sent; :}   
+        | sentIf:sent {: RESULT = sent; :} TEND       // ?
+        | sentWhile:sent {: RESULT = sent; :} TEND    
+        | sentCall:sent {: RESULT = sent; :}   
+        | error
+    ;
+
+sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está ya declarada, que no es una constante, que si es una función el tipo de retorno es igual al tipo de asignacion
+                String identificador = id.getLexema();
+
+                BloqueSentencias bloque = new BloqueSentencias();
+
+                ScopeIF scope = scopeManager.getCurrentScope();
+
+                if (!(scopeManager.containsSymbol(identificador))) {
+                    semanticErrorManager.semanticFatalError ("La variable: " + identificador +" en [" +  id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
+                } else {
+                    SymbolIF simbolo = scopeManager.searchSymbol(id.getLexema());
+                    TypeIF tipo = simbolo.getType();
+
+                    // Comprobamos que no es una constante
+                    if (simbolo instanceof SymbolConstant) {
+                        semanticErrorManager.semanticFatalError ("La constante: " + id.getLexema() +" en [" +  id.getLine() + ":" + id.getColumn() + "] no admite asignaciones.");
+                    } else if (tipo instanceof TypeFunction ) { // es una funcion
+                        TypeFunction tipoFuncion = (TypeFunction) tipo;
+                        // El tipo de retorno debe ser igual que la expresion
+                                     
+                        if ( !(tipoFuncion.getTipoRetorno() == exp.getTipo()) ) { 
+                            semanticErrorManager.semanticFatalError ("El tipo retorno funcion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide con la expresion.");
+                        }
+                    } else if (tipo instanceof TypeRecord) {
+                        // Si no son mismo tipo. ID debe ser expresion ENTERA
+                        if ( !(tipo.getName() == exp.getTipo().getName()) ){ 
+                            if ( (tipo.getName().equals("INTEGER") && exp.getTipo().getName().equals("POINTER")) ){
+                            
+                            } else {
+                                semanticErrorManager.semanticFatalError ("284. La Asignacion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide en tipos.");
+                            }                
+                        }
+                    }
+                }
+  
+
+                RESULT = bloque;
+            :}   
+            | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TASSIGN expresion {:
+                BloqueSentencias bloque = new BloqueSentencias();
+                RESULT = bloque;
+            :}
+    ;
+
+sentWhile ::= TWHILE expresion TDO sentencias {:
+                BloqueSentencias bloque = new BloqueSentencias();
+                RESULT = bloque;
+            :}
+;
+
+sentIf ::= TIF:id expresion:exp TTHEN sentencias:sen2 sentElse:sent2 {:
+            BloqueSentencias bloque = new BloqueSentencias();
+
+            if ( !(exp.getTipo().getName().equals("BOOLEAN")) ) {
+                semanticErrorManager.semanticFatalError ("328. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es LOGICA.");
+            } 
+
+            RESULT = bloque;
+
+        :};
+
+sentElse ::= TELSE sentencias:sent {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+        | /*Nada */ {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+    ;
+sentES ::= TWRITESTRING TPARI TLSTRING TPARD {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+        | TWRITEINT TPARI expresion TPARD  {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+        | TWRITELN {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}                          
+    ;
+
+sentReturn ::= TRETURN expresion {:
+            System.out.println("encontrada una sentencia de retorno");
+            BloqueSentencias bloque = new BloqueSentencias();
+
+            bloque.setTieneDevuelve(true);
+
+            RESULT = bloque;
+        :}
+            
+    ;
+
+sentCall ::= TIDENTIFICADOR TPARI sentCallParams TPARD {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+        | TIDENTIFICADOR {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}                           
+    ;
+sentCallParams ::= TIDENTIFICADOR {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+        | TIDENTIFICADOR TCOMA sentCallParams {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TCOMA sentCallParams {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
+            
+        | /*Nada*/ {:
+            BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = bloque;
+
+:}
             
         | error
             
     ;
-sent::= sentAsign           
-        | sentES
-        | sentReturn
-        | sentIf TEND       
-        | sentWhile TEND    
-        | sentCall
-        | error
-            
-    ;
-sentAsign::=
-        TIDENTIFICADOR TASSIGN expresion
-            
-        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TASSIGN expresion
-            
-    ;
-
-sentWhile::= TWHILE expresion TDO sentencias         ;
-
-sentIf::=         TIF expresion TTHEN sentencias sentElse;
-
-sentElse::=
-        TELSE sentencias
-            
-        | //Nada
-            
-    ;
-sentES::=
-        TWRITESTRING TPARI TLSTRING TPARD 
-        | TWRITEINT TPARI expresion TPARD  
-        | TWRITELN                           
-    ;
-sentReturn::=
-        TRETURN expresion
-            
-    ;
-
-sentCall::=
-        TIDENTIFICADOR TPARI sentCallParams TPARD  
-        | TIDENTIFICADOR                             
-    ;
-sentCallParams::= 
-        TIDENTIFICADOR
-            
-        | TIDENTIFICADOR TCOMA sentCallParams
-            
-        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR
-            
-        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TCOMA sentCallParams
-            
-        | /*Nada*/
-            
-        | error
-            
-    ;
-
-
 
 expresion::=
-        TNOT expresion                     
-        | TPARI expresion TPARD              
-        | expresion TDIVIDE expresion  
-        | expresion TSUMA expresion    
-        | expresion TAND expresion     
-        | expresion TMENOR expresion   
-        | expresion TDISTINTO expresion
-        | TLINT 
-        | TLTRUE
-        | TLFALSE
-        | TIDENTIFICADOR
-        | TIDENTIFICADOR TPUNTO TIDENTIFICADOR                                               
-        | TIDENTIFICADOR TPARI sentCallParams TPARD                                               
-        | error
+        TNOT expresion {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+            TypeIF type = new TypeSimple(scope);
+            Expresion expresion = new Expresion(type);
+
+            RESULT = expresion;
+        :}
+
+        | TPARI expresion:expresion TPARD {:    //listo
+            RESULT = expresion;
+        :}
+
+        | expresion:exp1 TDIVIDE:id expresion:exp2 {:/*aritmeticos*/
+            if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			} else {
+                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+
+                RESULT = exp;
+            }
+        :}               
+        | expresion:exp1 TSUMA:id expresion:exp2 {:
+            if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			} else {
+                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+
+                RESULT = exp;
+            }
+        :}                 
+        | expresion:exp1 TAND:id expresion:exp2 {:
+            if ( !(exp1.getTipo() == exp2.getTipo()) || !(exp1.getTipo().getName().equals("BOOLEAN")) || !(exp2.getTipo().getName().equals("BOOLEAN")) ) {
+                semanticErrorManager.semanticFatalError ("228. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+            } else {
+                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+
+                RESULT = exp;
+            }
+        :}    
+        | expresion:exp1 TMENOR:id expresion:exp2 {: /*comparaciones*/
+            //comprobamos todo tipos y demas
+             if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			}else{
+                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+
+                RESULT = exp;
+            }
+        :}                
+        | expresion:exp1 TDISTINTO:id expresion:exp2 {:
+            //comprobamos todo tipos y demas
+             if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			} else {
+                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+
+                RESULT = exp;
+            }
+        :}
+        | TLINT:integer {:          //listo
+            ScopeIF scope = scopeManager.getCurrentScope();
+            Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), integer.getLine(), integer.getColumn());
+            Value resultado = new Value(Integer.parseInt(integer.getLexema()));
+            exp.setResultado(resultado);  // Guardamos el valor operador
             
+            RESULT = exp;
+        :}                                      /*tipos primitivos*/
+        | TLTRUE:trueValue {:       //listo
+            ScopeIF scope = scopeManager.getCurrentScope();
+            Expresion expresion = new Expresion(scopeManager.searchType("BOOLEAN"), trueValue.getLine(), trueValue.getColumn());
+            
+            // Le damos el valor true=1 y false=0
+            Value resultado = new Value(1);
+            expresion.setResultado(resultado);
+   
+            RESULT = expresion;
+        :}
+        | TLFALSE:falseValue {:     //listo
+            ScopeIF scope = scopeManager.getCurrentScope();
+            Expresion expresion = new Expresion(scopeManager.searchType("BOOLEAN"), falseValue.getLine(), falseValue.getColumn());
+            
+            // Le damos el valor true=1 y false=0
+            Value resultado = new Value(0);
+            expresion.setResultado(resultado);
+        :}
+        | TIDENTIFICADOR:id {:  //esto debería estar terminado asi
+            ScopeIF scope = scopeManager.getCurrentScope();
+            SymbolTableIF tablaSimbolos = scope.getSymbolTable();
+            TypeTableIF tablaTipos = scope.getTypeTable();
+            
+            if (!(scopeManager.containsSymbol(id.getLexema()))) {
+                semanticErrorManager.semanticFatalError ("242. La variable: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
+            } else {
+                SymbolIF simbolo = scopeManager.searchSymbol(id.getLexema());
+                Expresion exp = new Expresion(simbolo.getType(), id.getLine(), id.getColumn());
+                
+                if (simbolo instanceof SymbolConstant) {
+					SymbolConstant simboloCte = (SymbolConstant) simbolo;
+					Value valor = new Value(simboloCte.getValue());
+                    exp.setResultado(valor);
+                }else{
+                    Variable var = new Variable(id.getLexema(), scope);
+                    var.setAmbito(simbolo.getScope());
+                    exp.setReferencia(true);
+                    exp.setResultado(var);
+                }
+                RESULT = exp;
+            }
+        :}                             /*variable o constante*/
+        | TIDENTIFICADOR:id TPUNTO TIDENTIFICADOR:campo        /*registro*/  
+
+        | TIDENTIFICADOR TPARI sentCallParams TPARD  /*invocacion*/                                        
+        | error   
     ;
-
-
-
 
 //
 // Reglas auxiliares
 //
-tipoPrimitivo ::=
-        TINTEGER
-            
-        | TBOOLEAN
-            
+tipoPrimitivo ::= TINTEGER:integer {: RESULT = "INTEGER"; :}     
+                | TBOOLEAN:bool {: RESULT = "BOOLEAN"; :}
     ;
-varSeqDeIds ::=
-        TIDENTIFICADOR
-            
-        | TIDENTIFICADOR TCOMA varSeqDeIds
-            
+varSeqDeIds ::= TIDENTIFICADOR:id {: 
+                    String varName = id.getLexema();
+
+                    Var var = new Var();
+
+                    var.setName(varName);
+                    var.setColumn(id.getColumn());
+                    Lista lista = new Lista();
+
+                    lista.add(var);
+
+                    RESULT = lista;
+                :}
+                    
+                | TIDENTIFICADOR:id TCOMA varSeqDeIds:list {:
+                    Lista lista = new Lista();
+
+                    for(int i=0; i < list.size(); i++) {
+                        lista.add(list.get(i));
+                    }
+
+                    String varName = id.getLexema();
+
+                    Var var = new Var();
+                    var.setName(varName);
+
+                    lista.add(var);
+
+                    RESULT = lista;
+                :}
     ;
 
-cuerpoModulo ::= 
-        ctes tipos vars subs TBEGIN finalModulo
-            
+cuerpoModulo ::= ctes tipos vars subs TBEGIN finalModulo:bloque {:
+            RESULT = bloque;
+        :}
+
         | error
             
     ;
-finalModulo ::= 
-        sentencias TEND TIDENTIFICADOR ntPtoComa
-            
+finalModulo ::= sentencias:bloque TEND TIDENTIFICADOR {:
+                    RESULT = bloque;
+                :} ntPtoComa 
         | error
             
     ;

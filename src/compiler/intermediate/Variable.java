@@ -12,7 +12,8 @@ public class Variable
 {
     private String  name     = null;
     private ScopeIF scope    = null;
-        
+    private ScopeIF ambito;
+
     /**
      * Constructor for Variable.
      * @param name The name.
@@ -111,5 +112,14 @@ public class Variable
     public final String toString ()
     {    
         return name;
+    }
+
+    public ScopeIF getAmbito() {
+        return ambito;
+    }
+
+    public void setAmbito(ScopeIF ambito) {
+        this.ambito = ambito;
+        
     }
 }

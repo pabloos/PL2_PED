@@ -21,6 +21,8 @@ import es.uned.lsi.compiler.lexical.LexicalErrorManager;
 %implements ScannerIF
 %scanerror LexicalError
 
+%full 
+%unicode
 
 %state YYCOMENTARIO
 
@@ -55,7 +57,7 @@ import es.uned.lsi.compiler.lexical.LexicalErrorManager;
 
 
 /*
- *Definición de macros:
+ *Definiciï¿½n de macros:
  */
 LETRA=[a-zA-Z]
 DIGITO=[0-9]
@@ -64,7 +66,7 @@ LIT_ENT=0|[1-9][0-9]*
 LIT_STR=\"([^\"])*\"
 IDENTIFICADOR={LETRA}({LETRA}|{DIGITO})*
 BLANCO=[\n\r\ \t\b]*
-//Cualquier cosa que no sea "(*" o "*)", o bien, unos paréntesis solos o un * solo.
+//Cualquier cosa que no sea "(*" o "*)", o bien, unos parï¿½ntesis solos o un * solo.
 CUERPO_COMENT=([^"(*""*)"]* | ["("")""*"])
 
 %%
@@ -140,7 +142,7 @@ CUERPO_COMENT=([^"(*""*)"]* | ["("")""*"])
 
 
 
-    // error en caso de no coincidir con ningún patrón
+    // error en caso de no coincidir con ningï¿½n patrï¿½n
 	[^]                 {
                             LexicalError error = new LexicalError ("Caracter incorrecto: ");
                             error.setLine (yyline + 1);
