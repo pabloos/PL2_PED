@@ -14,7 +14,7 @@ public class Cte extends NonTerminal {
 	private String column;
 
 	private TypeIF type;
-	private String value;
+	private int value;
 	private List<QuadrupleIF> code;
 	private TemporalIF temporal;
 
@@ -38,7 +38,7 @@ public class Cte extends NonTerminal {
 		
 	}
 	
-	public Cte(String name, TypeIF type, String value, String line, String column) {
+	public Cte(String name, TypeIF type, int value, String line, String column) {
 		this.name = name;
 		this.type = type;
 		this.value = value;
@@ -60,11 +60,11 @@ public class Cte extends NonTerminal {
 		this.type = type;
 	}
 
-	public String getValue() {
+	public int getValue() {
 		return value;
 	}
 
-	public void setValue(String value) {
+	public void setValue(int value) {
 		this.value = value;
 	}
 

@@ -178,11 +178,20 @@ ctesLista ::= cte ctesLista | cte;
 
 cte ::= TIDENTIFICADOR:id TIGUAL cteValor:value {: 
             String identificador = id.getLexema();
-            String val = value.getLexema();
+            int val;
+
+            if(value.getLexema().equals("TRUE")) {
+                val = 0;
+            } else if (value.getLexema().equals("FALSE")) {
+                val = 1;
+            } else { // integer
+                val = Integer.parseInt(value.getLexema());
+            }
+            
             String line = String.valueOf(value.getLine());
             String column = String.valueOf(value.getColumn());
 
-            String typeOfValue = Utilidades.getTypeOfValue(val);
+            String typeOfValue = Utilidades.getTypeOfValue(value.getLexema());
 
             if (typeOfValue.equals("noValidType")) {
                 semanticErrorManager.semanticFatalError("La constante " + identificador + " no tiene un tipo valido");
@@ -366,13 +375,6 @@ subs ::= subs TPROCEDURE {:
             semanticErrorManager.semanticDebug("Analizando los subprogramas del ambito " + scope.getName());
 
         :} subDecl:subDecl cuerpoModulo:bloque {:
-            boolean esfuncion = subDecl.getEsFuncion();
-
-            boolean tieneDevuelve = bloque.getTieneDevuelve();
-            System.out.println(esfuncion);
-
-            System.out.println(tieneDevuelve);
-
             if((subDecl.getEsFuncion() && !bloque.getTieneDevuelve()) || (!subDecl.getEsFuncion() && bloque.getTieneDevuelve())) {
                 semanticErrorManager.semanticFatalError("Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
             }
@@ -412,11 +414,9 @@ subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
                     if(tipo.equals("noType")) {  // el subprograma es un procedimiento
                         declaracion = new SubDecl(false);
                         tipoFuncion.setTipoRetorno(null);
-                        System.out.println(identificador + " es un procedimiento");
                     } else {                     // es una funcion
                         declaracion = new SubDecl(true);
                         tipoFuncion.setTipoRetorno(scopeManager.searchType(tipo));  
-                        System.out.println(identificador + " es una funcion");
                     }
                     
     				ArrayList parametros = new ArrayList(Utilidades.ordenaParametros(lista));
