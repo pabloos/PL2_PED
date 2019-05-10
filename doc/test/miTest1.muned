@@ -1,0 +1,138 @@
+(*
+ *************************************************************
+ * PUTEADOR - COMPROBADOR DE NIVEL 1 (NIVEL FACIL) PARA PL2  *
+ *                   BY NOMED - GRUPO B                      *
+ *************************************************************
+ * COMO USAR ESTE PUTEADOR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      *
+ * 1)SI LO EJECUTAS CONFORME ESTA,TU COMPILADOR NO DEBERIA   *
+ *   GENERARTE NINGUN ERROR						     	     *
+ * 2)PERO SI DESCOMENTAS UNO A UNO LOS COMENTARIOS EN ESE    *
+ * PUNTO DEBE DE DETECTAR EL ERROR DESCRITO A LA DERECHA     *
+ *************************************************************                                  
+ * USALO, MEJORALO Y COMPARTELO                              *
+ * 				PERO SOBRE TODO APRUEBA ESTA MEGDA           *
+ *************************************************************
+ * SI TE SIRVIO PARA MEJORAR TU PED DIMELO Y TE PASO         *
+ *			EL TEST DE NIVEL 2 (NIVEL MEDIO)                 *
+ *************************************************************
+ * 	         			RESPETO Y HACKING                    *
+ *************************************************************
+*)
+
+(*NIVEL 1 COMPROBRACION DE :
+CONST - VAR - TYPE - EXPRESIONES LOGICAS - EXPRESIONES ARITMETICAS
+- SENTENCIAS Y RETURN EN EL PROGRAMA PRINCIPAL Y EN BLOQUES IF Y FOR - BLOQUES IF-THEN-ELSE
+CON Y SIN RETURN - BUCLES FOR *)
+
+
+MODULE uno;
+  CONST A = 10;
+  		B = 20;
+  		C = FALSE;
+  		(*C = TRUE;*)						(*error identificador duplicado*)
+  		D = TRUE;
+  		(*E = ;*)							(*error en el formato al declarar constante*)
+  		
+  TYPE 	tipo1 = ARRAY[1..A] OF INTEGER;
+  		(*tipo2*)							(*errores en el formato al declarar tipo*)
+  		(*tipo2 ;*)
+  		(*tipo2 =;*)
+  		(*tipo1 = ARRAY[1..E] OF INTEGER;*)	(*error en el rango del tipo, no existe final*)
+  		(*tipo2 = ARRAY[1..C] OF BOOLEAN;*) (*error el tipo del indece debe ser entero*)
+  		tipo3 = ARRAY[1..20] OF BOOLEAN;
+  		(*D = ARRAY[1..20] OF BOOLEAN;*)    (*eror el identificador ya ha sido utilizado*)
+  		
+  VAR 	var1:BOOLEAN;
+  		var2:tipo1;
+  		(*var3:hola;*)						(*error el tipo hola no existe*)
+  		(*var3,var3:INTEGER;*)				(*error identificador duplicado*)
+  		(*;*)								(*error formato de declaracion de varaibles*)
+  		(*var0:*)							(*error formato*)
+  		(*var0;*)							(*error formato*)
+  		var4,var5,var6:BOOLEAN;
+  		var7,var8:INTEGER;
+  		
+  BEGIN
+  	WRITESTRING("hola mundo");
+  	(*WRITESTRING();*)                      (*error cadena vacia, deberia realmente ser un error*)
+  	WRITELN;
+	WRITEINT(var7);
+	WRITEINT(var7-var8);
+	(*WRITEINT(var7-);*)					(*error expresion mal formada*)
+	(*WRITESTRING(hola);*)					(*error debe tener una cadena*)
+	(*WRITEINT(va);*)						(*error variable no existe*)
+	(*WRITEINT(var1);*)						(*error debe ser entero*)
+	var1:=TRUE;
+	var1:=FALSE;
+	(*var7:=var1;*)							(*los tipos deben coincidir*)
+	var7:=5;
+	var7:=var8;
+	var7:=A;
+	(*var7:=D;*)							(*los tipos deben coincidir*)
+	
+(************OJO VAMOS A PERMITIR BLOQUES VACIOS EN FOR Y EN IF-THEN Y EN ELSE******)
+	
+	(*IF (var1 = var1);*)					(*if mal formado*)
+	(*IF ;*)								(*falta condicion en if*)
+	(*IF (var1=1) THEN END;*)					(*los tipos no son iguales*)
+	(*IF (2 - 3) THEN END;*)					(*la expresion no es boolean*)
+	IF (2=2) THEN END;
+	IF (var7>2) THEN END;
+	IF (var1=var4) THEN END;
+	
+	(*RETURN 1;*)							(* ERROR LAS SIGUIENTES SENTENCIAS SON INALCANZABLES*)
+	(*RETURN 1;
+		RETURN ;*)							(* ERROR hay sentencias inalcanzables*)
+	(*IF (2=2) THEN 
+		RETURN 1;		
+	END;*)									(*error falta return en else*)
+	
+	(*IF (2=2) THEN 
+		RETURN 1;
+	ELSE
+		RETURN FALSE;		
+	END;*)									(*tipos no coindicen en el retorno*)
+	
+	(*IF (2=2) THEN 
+		RETURN 1;
+	ELSE
+		RETURN 2;									
+	END;*)									(*Si descomentamos este bloque*)
+											(*y hay sentencias detras *)
+											(*error sentencias inalcanzables,culpa return*)
+	
+	IF (2=2) THEN
+		var1:=TRUE;
+	ELSE
+		var8:=8;
+	END;
+	
+	IF (2=2) THEN var1:=TRUE; ELSE var1:=TRUE; END;
+	
+	FOR var7:=1 TO 10 DO 
+		var1:=FALSE; 
+	END;
+	
+	(*FOR var7:=FALSE TO 10 DO 
+		var1:=FALSE; 
+	END;*)									(*el valor del indice debe ser entero*)
+
+	(*FOR var1000:=1 TO 10 DO				(*la variable del indice debe haber sido declarada en VAR*) 
+		var1:=FALSE; 
+	END;*)
+
+	(*FOR var1:=FALSE TO 10 DO 
+		var1:=FALSE; 
+	END;*)									(*la variable del indice debe ser una variable entera*)
+	
+	(*FOR var7:=1 TO 10 DO 
+		var7:= var7 - 1;
+		RETURN 1; 
+	END;*)									(*no se permite return en el bucle for*)
+	
+	FOR var7:=1 TO 10 DO END;				(*bucle sin sentencias*)
+	
+	RETURN 2;
+  (* END;*)									(*final de programa incorrecto falta id*)
+  (* END dos;*)								(*el identificador de programa no coincide*)
+  END uno;

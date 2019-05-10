@@ -34,6 +34,14 @@ action code   {:
 	ScopeManagerIF       scopeManager         = CompilerContext.getScopeManager ();
 	FinalCodeFactoryIF   finalCodeFactory     = CompilerContext.getFinalCodeFactory ();
 
+	// Cadenas 
+	List cadenas = new ArrayList();
+	// Desplazamiento con RA principal
+	int despl=0;
+
+	// Desplazamiento x ambito
+	HashMap desplScope = new HashMap(); 
+
 :}	
 
 parser code {:
@@ -129,8 +137,9 @@ program ::=
   {: 
   		// No modificar esta estructura, aunque se pueden añadir más acciones semánticas
   		
-  		//List intermediateCode = ax.getIntermediateCode ();
-  		//finalCodeFactory.create (intermediateCode);
+  		List intermediateCode = ax.getIntermediateCode ();
+        finalCodeFactory.setEnvironment(CompilerContext.getExecutionEnvironment());
+  		finalCodeFactory.create(intermediateCode);
 
   		// En caso de no comentarse las dos sentencias anteriores puede generar una excepcion
   		// en las llamadas a cupTest si el compilador no está completo. Esto es debido a que 
@@ -158,8 +167,58 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
             tipoEntero.setName("INTEGER");
             tablaTipos.addType(tipoEntero);
             
-        :} cuerpoModulo 
-        | TMODULE error
+        :} cuerpoModulo:bloque {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+
+            Axiom ax = new Ax();
+
+            for (TemporalIF temp:scope.getTemporalTable().getTemporals()) {
+                if (temp instanceof Temporal) {
+                    ((Temporal) temp).setAddress(despl);
+                    despl = despl + 1;
+                }
+            }
+
+            int bloqueMainRA = 2;
+
+            int tam;
+            tam = scope.getSymbolTable().getSize() + scope.getTemporalTable().getSize() + bloqueMainRA;
+            // TemporalIF temp = ax.getTemporal();
+
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
+            cb.addQuadruple("INICIO_PROGRAMA", null, tam);
+            cb.addQuadruples(bloque.getIntermediateCode());            
+            cb.addQuadruple("FIN_PROGRAMA", null);
+
+            // anyadimos todas las cadena al final del programa
+            int i=1;
+            cb.addQuadruple ("CADENA", "cadena0","\"\\n\"", "");
+            for (Iterator it = cadenas.iterator(); it.hasNext();i++){
+                String nombre="cadena"+i;
+                cb.addQuadruple ("CADENA", nombre,it.next(), "");
+            }
+
+            List intermediateCode = cb.create();
+
+
+            //IMPRIMIMOS CODIGO INTERMEDIO
+            syntaxErrorManager.syntaxInfo("********************************************");
+            syntaxErrorManager.syntaxInfo("**           CODIGO INTERMEDIO            **");
+            syntaxErrorManager.syntaxInfo("********************************************");
+
+            Iterator it = intermediateCode.iterator();
+            while (it.hasNext()){
+                syntaxErrorManager.syntaxInfo("** " + it.next().toString());
+            }
+
+
+            ax.setIntermediateCode(intermediateCode);
+
+            RESULT = ax;
+
+            //falta
+        :}
+        | TMODULE error {:syntaxErrorManager.syntaxFatalError("001. No se ha especificado nombre al programa");:}
             
     ;
 
@@ -344,11 +403,13 @@ var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
 
                 String name = v.getName();
 
+                despl++;
+
                 // comprobamos que la variable no ha sido declarada anteriormente y la guardamos en la tabla de simbolos
                 if (!scope.getSymbolTable().containsSymbol(name) ){		
                     semanticErrorManager.semanticDebug("Anadiendo la variable " + name + " a la tabla de simbolos");
                     
-                    SymbolVariable simboloVar = new SymbolVariable(scope, name, scopeManager.searchType(tipo));
+                    SymbolVariable simboloVar = new SymbolVariable(scope, name, scopeManager.searchType(tipo), despl);
                     tablaSimbolos.addSymbol(name, simboloVar);                                       	
                 } else {
                     semanticErrorManager.semanticFatalError ("210. La variable: " + name + " en [" + v.getLine() + ":" + v.getColumn() + "] ya ha sido definida.");
@@ -378,6 +439,8 @@ subs ::= subs TPROCEDURE {:
             if((subDecl.getEsFuncion() && !bloque.getTieneDevuelve()) || (!subDecl.getEsFuncion() && bloque.getTieneDevuelve())) {
                 semanticErrorManager.semanticFatalError("Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
             }
+
+            RESULT = bloque;
         :}
         | //Nada
     ;
@@ -540,9 +603,9 @@ sentencias ::= sent:sent ntPtoComa sentencias:blq {:
             
     ;
 sent ::= sentAsign:sent {: RESULT = sent; :}          //LISTO
-        | sentES:sent {: RESULT = sent; :}   
+        | sentES:sent {: RESULT = sent; :}             //LISTO
         | sentReturn:sent {: RESULT = sent; :}   
-        | sentIf:sent {: RESULT = sent; :} TEND       // ?
+        | sentIf:sent {: RESULT = sent; :} TEND       // LISTO?
         | sentWhile:sent {: RESULT = sent; :} TEND    
         | sentCall:sent {: RESULT = sent; :}   
         | error
@@ -550,70 +613,155 @@ sent ::= sentAsign:sent {: RESULT = sent; :}          //LISTO
 
 sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está ya declarada, que no es una constante, que si es una función el tipo de retorno es igual al tipo de asignacion
                 String identificador = id.getLexema();
+                ScopeIF scope = scopeManager.getCurrentScope();
 
                 BloqueSentencias bloque = new BloqueSentencias();
 
-                ScopeIF scope = scopeManager.getCurrentScope();
+                IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
 
                 if (!(scopeManager.containsSymbol(identificador))) {
                     semanticErrorManager.semanticFatalError ("La variable: " + identificador +" en [" +  id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
                 } else {
-                    SymbolIF simbolo = scopeManager.searchSymbol(id.getLexema());
+                    SymbolIF simbolo = scopeManager.searchSymbol(identificador);
                     TypeIF tipo = simbolo.getType();
 
                     // Comprobamos que no es una constante
                     if (simbolo instanceof SymbolConstant) {
                         semanticErrorManager.semanticFatalError ("La constante: " + id.getLexema() +" en [" +  id.getLine() + ":" + id.getColumn() + "] no admite asignaciones.");
-                    } else if (tipo instanceof TypeFunction ) { // es una funcion
-                        TypeFunction tipoFuncion = (TypeFunction) tipo;
-                        // El tipo de retorno debe ser igual que la expresion
-                                     
-                        if ( !(tipoFuncion.getTipoRetorno() == exp.getTipo()) ) { 
-                            semanticErrorManager.semanticFatalError ("El tipo retorno funcion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide con la expresion.");
-                        }
-                    } else if (tipo instanceof TypeRecord) {
-                        // Si no son mismo tipo. ID debe ser expresion ENTERA
-                        if ( !(tipo.getName() == exp.getTipo().getName()) ){ 
-                            if ( (tipo.getName().equals("INTEGER") && exp.getTipo().getName().equals("POINTER")) ){
-                            
-                            } else {
-                                semanticErrorManager.semanticFatalError ("284. La Asignacion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide en tipos.");
-                            }                
+                    } else {
+                        if(!tipo.getName().equals(exp.getTipo().getName())){
+                            semanticErrorManager.semanticFatalError("Los tipos de la asignación no cuadran");
+                        } else {
+                            // TemporalFactoryIF tF = new TemporalFactory(scope); 
+                            // TemporalIF temp = tF.create();
+                            // TemporalIF eTemp = exp.getTemporal(); 
+                            // cb.addQuadruples(exp.getIntermediateCode());
+                            // SymbolIF sV = scopeManager.searchSymbol(id.getLexema());
+                            // Variable var = new Variable(id.getLexema(), sV.getScope()); 
+                            // cb.addQuadruple("MVA", temp, var);
+                            // cb.addQuadruple("STP", temp, eTemp); 
+                            // bloque.setIntermediateCode(cb.create());
+
+                            // Creamos codigo para la sentencia 
+                            Variable var = new Variable(id.getLexema(), scope);
+                            var.setAmbito(simbolo.getScope());
+                            List code1 = exp.getIntermediateCode();
+                            cb.addQuadruples(code1);
+                            cb.addQuadruple("ASIG", var, exp.getResultado());   
+
+                            bloque.setIntermediateCode(cb.create());
                         }
                     }
-                }
-  
+                    
+                    // else if (tipo instanceof TypeRecord) {
+                    //     if ( !(tipo.getName() == exp.getTipo().getName()) ){       
+                    //         semanticErrorManager.semanticFatalError ("284. La Asignacion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide en tipos.");             
+                    //     } else {
+                            
+                    //     }
+                    // }
 
-                RESULT = bloque;
+                }
+                
+                RESULT=bloque;
             :}   
-            | TIDENTIFICADOR TPUNTO TIDENTIFICADOR TASSIGN expresion {:
+
+            | TIDENTIFICADOR:id TPUNTO TIDENTIFICADOR:campo TASSIGN expresion:exp {: // asignación de registros
+                String identificador = id.getLexema();
+
                 BloqueSentencias bloque = new BloqueSentencias();
+
+
+                // ScopeIF scope = scopeManager.getCurrentScope();
+                // SymbolTableIF tablaSimbolos = scope.getSymbolTable();
+
+                // if(!tablaSimbolos.containsSymbol(identificador + campo.getLexema())) {
+                //     semanticErrorManager.semanticFatalError("No se encuentra el simbolo");
+                // } else {
+                //     TemporalFactoryIF tF = new TemporalFactory(scope); 
+                //     IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
+
+                //     TemporalIF temp = tF.create();
+                //     TemporalIF eTemp = exp.getTemporal(); 
+                //     cb.addQuadruples(exp.getIntermediateCode());
+                //     SymbolIF sV = scopeManager.searchSymbol(id.getLexema());
+                //     Variable var = new Variable(id.getLexema(), sV.getScope()); 
+                //     cb.addQuadruple("MVA", temp, var);
+                //     cb.addQuadruple("STP", temp, eTemp); 
+                //     bloque.setIntermediateCode(cb.create());
+                // }
+
+
+
                 RESULT = bloque;
             :}
     ;
 
 sentWhile ::= TWHILE expresion TDO sentencias {:
                 BloqueSentencias bloque = new BloqueSentencias();
+
                 RESULT = bloque;
             :}
 ;
 
-sentIf ::= TIF:id expresion:exp TTHEN sentencias:sen2 sentElse:sent2 {:
-            BloqueSentencias bloque = new BloqueSentencias();
+sentIf ::= TIF:id expresion:exp TTHEN sentencias:sent1 sentElse:sent2 {:
+            // System.out.println(e.getTipo());
+
+            // BloqueSentencias bloque = new BloqueSentencias();
+            // ScopeIF scope = scopeManager.getCurrentScope();
+
+            // if ( !(e.getTipo().getName().equals("BOOLEAN")) ) {
+            //     semanticErrorManager.semanticFatalError ("328. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es LOGICA.");
+            // } else {
+            //     LabelFactory lF= new LabelFactory(scope.getName());
+            //     LabelIF l1 = lF.create();
+            //     LabelIF l2 = lF.create();
+            //     TemporalIF expTemp = e.getTemporal();
+            //     IntermediateCodeBuilder cb= new IntermediateCodeBuilder(scope);
+            //     cb.addQuadruples(e.getIntermediateCode());
+            //     cb.addQuadruple("BRF", expTemp ,l1);
+            //     cb.addQuadruples(s1.getIntermediateCode());
+            //     cb.addQuadruple("BR", l2);
+            //     cb.addQuadruple("INL", l1); 
+            //     cb.addQuadruples(s2.getIntermediateCode());
+            //     cb.addQuadruple("INL", l2);
+            //     bloque.setIntermediateCode(cb.create());
+            // }
+
+            // RESULT = bloque;
 
             if ( !(exp.getTipo().getName().equals("BOOLEAN")) ) {
-                semanticErrorManager.semanticFatalError ("328. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es LOGICA.");
-            } 
+                                semanticErrorManager.semanticFatalError ("330. La expresion: " + id.getLexema() +" en [" + 
+									id.getLine() + ":" + id.getColumn() + "] no es LOGICA.");
+            }
+                                BloqueSentencias bloque = new BloqueSentencias();
+				ScopeIF scope = scopeManager.getCurrentScope();
+				IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
 
-            RESULT = bloque;
+				// LabelFactoryIF lf = CompilerContext.getLabelFactory();
+                                LabelFactory lf= new LabelFactory(scope.getName());
+
+				LabelIF LTRUE = lf.create();
+				LabelIF LFALSE = lf.create();
+                                cb.addQuadruples(exp.getIntermediateCode());
+                                cb.addQuadruple("CMP", exp.getResultado(), new Value(1));
+				cb.addQuadruple("BNZ",LFALSE);   // Salto no cero
+				cb.addQuadruples(sent1.getIntermediateCode());
+				cb.addQuadruple("BR",LTRUE);  // Salto incondicional
+				cb.addQuadruple("ETIQUETA", LFALSE);
+				cb.addQuadruples(sent2.getIntermediateCode());
+				cb.addQuadruple("ETIQUETA", LTRUE);
+                                cb.addQuadruple("NOP", null);
+                                List code = cb.create();
+                                bloque.setIntermediateCode(code);
+                                RESULT=bloque;
 
         :};
 
 sentElse ::= TELSE sentencias:sent {:
-            BloqueSentencias bloque = new BloqueSentencias();
-            RESULT = bloque;
-
-:}
+            // BloqueSentencias bloque = new BloqueSentencias();
+            RESULT = sent;
+        :}
             
         | /*Nada */ {:
             BloqueSentencias bloque = new BloqueSentencias();
@@ -622,20 +770,40 @@ sentElse ::= TELSE sentencias:sent {:
 :}
             
     ;
-sentES ::= TWRITESTRING TPARI TLSTRING TPARD {:
-            BloqueSentencias bloque = new BloqueSentencias();
-            RESULT = bloque;
+sentES ::= TWRITESTRING:id TPARI TLSTRING:cad TPARD {:
+            BloqueSentencias bloqueSentencias = new BloqueSentencias ();
+            bloqueSentencias.setTieneDevuelve(false);
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
 
+            				cadenas.add(cad.getLexema());
+
+				cb.addQuadruple("WRSTR","cadena"+cadenas.size());
+            bloqueSentencias.setIntermediateCode(cb.create());
+            RESULT = bloqueSentencias;
 :}
-        | TWRITEINT TPARI expresion TPARD  {:
-            BloqueSentencias bloque = new BloqueSentencias();
-            RESULT = bloque;
 
+        | TWRITEINT:id TPARI expresion:exp TPARD  {:
+            if (exp.getTipo()!=null){
+                if (!exp.getTipo().getName().toString().equals("INTEGER")){
+                    semanticErrorManager.semanticFatalError ("Una sentencia escribeEnt [" + id.getLine() + ":" + id.getColumn() + "] solo puede recibir variable o constante de tipo entero.");
+                } else {
+                    BloqueSentencias bloqueSentencias = new BloqueSentencias ();
+                    IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
+                    cb.addQuadruples(exp.getIntermediateCode());
+                                cb.addQuadruple("WRINT", exp.getResultado());
+                    bloqueSentencias.setIntermediateCode(cb.create());
+                    bloqueSentencias.setTieneDevuelve(false);
+                    RESULT = bloqueSentencias;
+                }
+            }
 :}
         | TWRITELN {:
-            BloqueSentencias bloque = new BloqueSentencias();
-            RESULT = bloque;
-
+            BloqueSentencias bloqueSentencias = new BloqueSentencias ();
+            bloqueSentencias.setTieneDevuelve(false);
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
+            cb.addQuadruple("ESCRIBESAL", null);
+            bloqueSentencias.setIntermediateCode(cb.create());
+            RESULT = bloqueSentencias;
 :}                          
     ;
 
@@ -696,10 +864,41 @@ sentCallParams ::= TIDENTIFICADOR {:
     ;
 
 expresion::=
-        TNOT expresion {:
-            ScopeIF scope = scopeManager.getCurrentScope();
-            TypeIF type = new TypeSimple(scope);
-            Expresion expresion = new Expresion(type);
+        TNOT:id expresion:exp {:
+            Expresion expresion = new Expresion (scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+
+            if (exp.getTipo()!=null){
+                if (!exp.getTipo().getName().toString().equals("INTEGER")){
+                    semanticErrorManager.semanticFatalError ("1 Una expresi�n l�gica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
+                } else {
+                    ScopeIF scope = scopeManager.getCurrentScope();
+                    TemporalFactory tf = new TemporalFactory (scope);
+                    // Integer numTemporal=scopeManager.getCurrentScope().getTemporalTable().getTemporals().size();
+                    // Integer posTemp=numTemporal+despl;
+                    
+                    LabelFactory labelFactory = new LabelFactory(scope.getName());
+
+                    TemporalIF t = tf.create();
+                    // t.setDesplazamiento(posTemp);
+                    LabelIF lTrue = labelFactory.create ("TRUE");
+                    LabelIF lFalse = labelFactory.create ("FALSE");
+                    IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scope);
+                    cb.addQuadruples (exp.getIntermediateCode());
+                    
+                    //Cortocircuito, if a then b else false
+                    Value Verdadero = new Value(1);
+                    Value Falso = new Value(0);
+                    cb.addQuadruple("CMP", Verdadero, exp.getResultado()); //compara
+                    cb.addQuadruple("BN",lTrue); //salto negativo
+                    cb.addQuadruple("ASIG", t, Falso);
+                    cb.addQuadruple("BR",lFalse);//salto incondicional
+                    cb.addQuadruple("ETIQUETA",lTrue);
+                    cb.addQuadruple("ASIG", t, Verdadero);
+                    cb.addQuadruple("ETIQUETA",lFalse);
+                    expresion.setIntermediateCode(cb.create());
+                    expresion.setResultado(t);
+                }
+            }
 
             RESULT = expresion;
         :}
@@ -712,27 +911,153 @@ expresion::=
             if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
                 semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
 			} else {
-                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                // Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                // ScopeIF scope = scopeManager.getCurrentScope();
 
-                RESULT = exp;
+                // TemporalFactory tf = new TemporalFactory(scope); 
+                // IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
+                // TemporalIF temp1 = exp1.getTemporal();
+                // TemporalIF temp2 = exp2.getTemporal();
+                // TemporalIF temp = tf.create(); 
+                // cb.addQuadruples(exp1.getIntermediateCode()); 
+                // cb.addQuadruples(exp2.getIntermediateCode()); 
+                // cb.addQuadruple("DIV", temp, temp1, temp2); 
+                // exp.setTemporal(temp);
+                // exp.setIntermediateCode(cb.create());
+
+                // exp.setTipo(scopeManager.searchType("BOOLEAN"));
+
+                // RESULT = exp;
+
+                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                if (exp.castingTipos(exp1 , exp2) ) {
+                        semanticErrorManager.semanticFatalError ("222. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+                }else{
+                    ScopeIF scope = scopeManager.getCurrentScope();
+
+                    TemporalFactoryIF tf = new TemporalFactory(scope); 
+                    Temporal temporal = (Temporal) tf.create(); 
+                    temporal.setDesplazamiento(despl);
+                    despl++;
+                    IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+                    List code1 = exp1.getIntermediateCode();
+                    List code2 = exp2.getIntermediateCode();
+                    cb.addQuadruples (code1);
+                    cb.addQuadruples (code2);
+                
+                    cb.addQuadruple ("SUB", temporal, exp1.getResultado(), exp2.getResultado()); // temporal <- exp1 - exp2
+                    List code=cb.create ();
+                    exp.setResultado (temporal);    
+                    exp.setIntermediateCode (code);  
+                                            
+                    RESULT=exp;
+                }
             }
         :}               
         | expresion:exp1 TSUMA:id expresion:exp2 {:
             if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
                 semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
 			} else {
-                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                /* Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                ScopeIF scope = scopeManager.getCurrentScope();
 
-                RESULT = exp;
+                TemporalFactory tf = new TemporalFactory(scope); 
+                IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
+                TemporalIF temp1 = exp1.getTemporal();
+                TemporalIF temp2 = exp2.getTemporal();
+                TemporalIF temp = tf.create(); 
+                cb.addQuadruples(exp1.getIntermediateCode()); 
+                cb.addQuadruples(exp2.getIntermediateCode()); 
+                cb.addQuadruple("SUM", temp, temp1, temp2); 
+                exp.setTemporal(temp);
+                exp.setIntermediateCode(cb.create());
+
+                RESULT = exp; */
+
+                ScopeIF scope = scopeManager.getCurrentScope();
+                IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+                Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                // TemporalFactoryIF tf = CompilerContext.getTemporalFactory(scope);				
+                TemporalFactoryIF tf = new TemporalFactory(scope); 
+
+                Temporal temporal = (Temporal) tf.create(); 
+                
+                // Suma CONJUNTOS
+                if (exp1.getTipo().equals(exp2.getTipo()) && exp1.getTipo() instanceof TypeSet) {
+                    TypeSet tipoSet = (TypeSet) exp1.getTipo();
+                    exp.setTipo(exp1.getTipo());
+                    temporal.setDesplazamiento(despl);
+                    temporal.setSize(tipoSet.getTamanyo());
+                    despl=despl+tipoSet.getTamanyo();
+                
+                    List code1 = exp1.getIntermediateCode();
+                    List code2 = exp2.getIntermediateCode();
+                    cb.addQuadruples (code1);
+                    cb.addQuadruples (code2);
+                    cb.addQuadruple ("UNION_SET", temporal, exp1.getResultado(), exp2.getResultado()); 
+
+                // Suma ENTEROS y/o PUNTEROS  
+                } else {
+                    if (exp.castingTipos(exp1 , exp2) )
+                            semanticErrorManager.semanticFatalError ("224. La expresion: " + id.getLexema() +" en [" + 
+                            id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+                    temporal.setDesplazamiento(despl);
+                    despl++;
+                    List code1 = exp1.getIntermediateCode();
+                    List code2 = exp2.getIntermediateCode();
+                    cb.addQuadruples (code1);
+                    cb.addQuadruples (code2);
+                    cb.addQuadruple ("ADD", temporal, exp1.getResultado(), exp2.getResultado()); // temporal <-exp1 + exp2
+    
+                    
+                }
+                List code=cb.create ();
+                exp.setResultado (temporal); 
+                exp.setIntermediateCode (code); 
+                RESULT=exp;
             }
         :}                 
         | expresion:exp1 TAND:id expresion:exp2 {:
             if ( !(exp1.getTipo() == exp2.getTipo()) || !(exp1.getTipo().getName().equals("BOOLEAN")) || !(exp2.getTipo().getName().equals("BOOLEAN")) ) {
                 semanticErrorManager.semanticFatalError ("228. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
             } else {
-                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+                if (exp1.getTipo()!=null && exp2.getTipo()!=null){
+                    if (!exp1.getTipo().getName().toString().equals("INTEGER") || !exp2.getTipo().getName().toString().equals("INTEGER")){
+                        semanticErrorManager.semanticFatalError ("2 Una expresi�n l�gica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
+                    } else {
+                        //MEMORIA: Considero l�gica de cortocircuito. Adem�s <=0 es falso, y el resto verdadero.
+                        Expresion exp = new Expresion (scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                        ScopeIF scope = scopeManager.getCurrentScope();
+                        TemporalFactory tf = new TemporalFactory (scope);
+                        LabelFactory labelFactory= new LabelFactory(scope.getName());
 
-                RESULT = exp;
+                        // Integer numTemporal=scopeManager.getScope().getTemporalTable().getTemporals().size();
+                        // Integer posTemp=numTemporal+despl;
+                        TemporalIF t = tf.create();
+                        // t.setDesplazamiento(posTemp);
+                        LabelIF lTrue = labelFactory.create ("TRUE");
+                        LabelIF lFalse = labelFactory.create ("FALSE");
+                        IntermediateCodeBuilder cb=new IntermediateCodeBuilder (scope);
+                        cb.addQuadruples (exp1.getIntermediateCode());
+                        cb.addQuadruples (exp2.getIntermediateCode());
+                        //Cortocircuito, if a then b else false
+                        Value Verdadero=new Value(1);
+                        Value Falso=new Value(0);
+                        cb.addQuadruple ("CMP", Verdadero, exp1.getResultado()); //compara
+                        cb.addQuadruple ("BN",lTrue); //salto negativo
+                        cb.addQuadruple ("ASIG", t, exp2.getResultado());
+                        cb.addQuadruple ("BR",lFalse);//salto incondicional
+                        cb.addQuadruple ("ETIQUETA",lTrue);
+                        cb.addQuadruple ("ASIG", t, Falso);
+                        cb.addQuadruple ("ETIQUETA",lFalse);
+                        exp.setIntermediateCode(cb.create());
+                        exp.setResultado(t);
+
+                       exp.setTipo(scopeManager.searchType("BOOLEAN"));
+
+                        RESULT = exp;                            
+                    }
+                }
             }
         :}    
         | expresion:exp1 TMENOR:id expresion:exp2 {: /*comparaciones*/
@@ -740,9 +1065,64 @@ expresion::=
              if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
                 semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
 			}else{
-                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+                // Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+                // ScopeIF scope = scopeManager.getCurrentScope();
 
-                RESULT = exp;
+                // TemporalFactory tf = new TemporalFactory(scope); 
+                // IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
+                // TemporalIF temp1 = exp1.getTemporal();
+                // TemporalIF temp2 = exp2.getTemporal();
+                // TemporalIF temp = tf.create(); 
+                // cb.addQuadruples(exp1.getIntermediateCode()); 
+                // cb.addQuadruples(exp2.getIntermediateCode()); 
+                // cb.addQuadruple("LS", temp, temp1, temp2); 
+                // exp.setTemporal(temp);
+                // exp.setIntermediateCode(cb.create());
+
+                // exp.setTipo(scopeManager.searchType("BOOLEAN"));
+
+                // RESULT = exp;
+
+                if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                                  semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + 
+							id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			     }else{
+		      	    Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+				    ScopeIF scope = scopeManager.getCurrentScope();
+				//   TemporalFactoryIF tf = CompilerContext.getTemporalFactory(scope);			
+                TemporalFactory tf = new TemporalFactory (scope);
+	
+                Temporal temporal = (Temporal) tf.create(); 
+                temporal.setDesplazamiento(despl);
+                despl++;
+                IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+                List code1 = exp1.getIntermediateCode();
+                List code2 = exp2.getIntermediateCode();
+                cb.addQuadruples (code1);
+                cb.addQuadruples (code2);
+                Value verdad = new Value(1);
+                Value falso = new Value(0);
+                //   LabelFactoryIF lf = CompilerContext.getLabelFactory();	
+                LabelFactory lf= new LabelFactory(scope.getName());
+				
+                LabelIF LTRUE = lf.create();
+                LabelIF LFIN = lf.create();				
+                // Hacemos cmp al reves para contemplar caso ambos iguales
+                cb.addQuadruple ("CMP", exp1.getResultado(), exp2.getResultado()); 
+                cb.addQuadruple ("BN", LTRUE); 
+                cb.addQuadruple ("ASIG", temporal, falso);
+                cb.addQuadruple ("BR", LFIN);
+                cb.addQuadruple ("ETIQUETA", LTRUE);
+                cb.addQuadruple ("ASIG", temporal, verdad);
+                cb.addQuadruple ("ETIQUETA", LFIN);
+                                
+				  List code=cb.create ();
+				  exp.setResultado (temporal); 
+				  exp.setIntermediateCode (code); 
+						
+				  RESULT=exp;
+                
+                }
             }
         :}                
         | expresion:exp1 TDISTINTO:id expresion:exp2 {:
@@ -750,17 +1130,101 @@ expresion::=
              if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
                 semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
 			} else {
-                Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+                if (exp1.getTipo()!=null && exp2.getTipo()!=null){
+                    if (!exp1.getTipo().getName().toString().equals("INTEGER") || !exp2.getTipo().getName().toString().equals("INTEGER")){
+                        semanticErrorManager.semanticFatalError ("3 Una expresi�n l�gica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
+                    } else {
+                        // Expresion exp = new Expresion (scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
+                        // ScopeIF scope = scopeManager.getCurrentScope();
+                        // TemporalFactory tf = new TemporalFactory (scope);
+                        // LabelFactory labelFactory= new LabelFactory(scope.getName());
 
-                RESULT = exp;
+                        // // Integer numTemporal=scopeManager.getScope().getTemporalTable().getTemporals().size();
+                        // // Integer posTemp=numTemporal+despl;
+                        // TemporalIF t = tf.create();
+                        // // t.setDesplazamiento(posTemp);
+                        // TemporalIF tres = tf.create();
+                        // // tres.setDesplazamiento(++posTemp);
+                        // LabelIF lTrue = labelFactory.create ("TRUE");
+                        // LabelIF lFalse = labelFactory.create ("FALSE");
+                        // IntermediateCodeBuilder cb=new IntermediateCodeBuilder (scope);
+                        // cb.addQuadruples (exp1.getIntermediateCode());
+                        // cb.addQuadruples (exp2.getIntermediateCode());
+                        // cb.addQuadruple ("CMP", exp2.getResultado(), exp1.getResultado());
+                        // cb.addQuadruple ("BNZ", lTrue);
+                        // cb.addQuadruple ("ASIG", t, new Value(0));
+                        // cb.addQuadruple ("BR", lFalse);
+                        // cb.addQuadruple ("ETIQUETA", lTrue);
+                        // cb.addQuadruple ("ASIG", t, new Value(1));
+                        // cb.addQuadruple ("ETIQUETA", lFalse);
+                        // cb.addQuadruple ("ASIG", tres, t);
+                        // exp.setIntermediateCode(cb.create());
+                        // exp.setResultado(tres);
+
+
+                        if ( !(exp1.getTipo() == exp2.getTipo()) )
+                                  semanticErrorManager.semanticFatalError ("238. La expresion: " + id.getLexema() +" en [" + 
+							id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+                            if ( (exp1.getTipo() instanceof TypeRecord) || exp1.getTipo() instanceof TypeSet )
+                                  semanticErrorManager.semanticFatalError ("240. La expresion: " + id.getLexema() +" en [" + 
+							id.getLine() + ":" + id.getColumn() + "] no permitida para este tipo.");
+                     
+                            Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+                            ScopeIF scope = scopeManager.getCurrentScope();
+                TemporalFactoryIF tf = new TemporalFactory(scope);  //cambiado
+                            Temporal temporal = (Temporal) tf.create(); 
+                            temporal.setDesplazamiento(despl);
+                            despl++;
+                            IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+                            List code1 = exp1.getIntermediateCode();
+                            List code2 = exp2.getIntermediateCode();
+                            cb.addQuadruples (code1);
+                            cb.addQuadruples (code2);
+                            Value verdad = new Value(1);
+                            Value falso = new Value(0);
+                LabelFactory lf = new LabelFactory(scope.getName()); // lo he cambiado, y en varios TemporalFactory tmb
+                            LabelIF LTRUE = lf.create();
+                            LabelIF LFIN = lf.create();
+                            cb.addQuadruple ("CMP", exp1.getResultado(), exp2.getResultado()); 
+                            cb.addQuadruple ("BNZ", LTRUE); 
+                            cb.addQuadruple ("ASIG", temporal, falso);
+                            cb.addQuadruple ("BR", LFIN);
+                            cb.addQuadruple ("ETIQUETA", LTRUE);
+                            cb.addQuadruple ("ASIG", temporal, verdad);
+                            cb.addQuadruple ("ETIQUETA", LFIN);
+
+                            List code=cb.create ();
+                            exp.setResultado (temporal); 
+                            exp.setIntermediateCode (code); 
+                            
+                            exp.setTipo(scopeManager.searchType("BOOLEAN")); //esto es mio!!!
+
+                            RESULT=exp;
+
+                        // RESULT = exp;
+                    }
+                }
             }
         :}
-        | TLINT:integer {:          //listo
+        | TLINT:num {:          //listo
+            // ScopeIF scope = scopeManager.getCurrentScope();
+            // Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), integer.getLine(), integer.getColumn());
+            // Value resultado = new Value(Integer.parseInt(integer.getLexema()));
+            // exp.setResultado(resultado);  // Guardamos el valor operador
+                        
+            // TemporalFactory tf = new TemporalFactory(scope); IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); TemporalIF temp = tf.create();
+            // int value;
+            // value = Integer.parseInt(integer.getLexema());
+            // cb.addQuadruple("MV", temp, value);
+            // exp.setTemporal(temp);
+            // exp.setIntermediateCode(cb.create());
+
+            // RESULT = exp;
+
             ScopeIF scope = scopeManager.getCurrentScope();
-            Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), integer.getLine(), integer.getColumn());
-            Value resultado = new Value(Integer.parseInt(integer.getLexema()));
+            Expresion exp = new Expresion(scopeManager.searchType("INTEGER"), num.getLine(), num.getColumn());
+            Value resultado=new Value(Integer.parseInt(num.getLexema()));
             exp.setResultado(resultado);  // Guardamos el valor operador
-            
             RESULT = exp;
         :}                                      /*tipos primitivos*/
         | TLTRUE:trueValue {:       //listo
@@ -769,8 +1233,9 @@ expresion::=
             
             // Le damos el valor true=1 y false=0
             Value resultado = new Value(1);
+            expresion.setTipo(scopeManager.searchType("BOOLEAN"));
             expresion.setResultado(resultado);
-   
+
             RESULT = expresion;
         :}
         | TLFALSE:falseValue {:     //listo
@@ -779,6 +1244,7 @@ expresion::=
             
             // Le damos el valor true=1 y false=0
             Value resultado = new Value(0);
+            expresion.setTipo(scopeManager.searchType("BOOLEAN"));
             expresion.setResultado(resultado);
         :}
         | TIDENTIFICADOR:id {:  //esto debería estar terminado asi
@@ -796,7 +1262,7 @@ expresion::=
 					SymbolConstant simboloCte = (SymbolConstant) simbolo;
 					Value valor = new Value(simboloCte.getValue());
                     exp.setResultado(valor);
-                }else{
+                } else {
                     Variable var = new Variable(id.getLexema(), scope);
                     var.setAmbito(simbolo.getScope());
                     exp.setReferencia(true);
@@ -805,9 +1271,48 @@ expresion::=
                 RESULT = exp;
             }
         :}                             /*variable o constante*/
-        | TIDENTIFICADOR:id TPUNTO TIDENTIFICADOR:campo        /*registro*/  
+        | TIDENTIFICADOR:id1 TPUNTO TIDENTIFICADOR:id2        /*registro*/  {:
+            if ( !(scopeManager.containsSymbol(id1.getLexema())) ) {
+                semanticErrorManager.semanticFatalError ("El tipo registro: " + id1.getLexema() +" en [" + id1.getLine() + ":" + id1.getColumn() + "] no ha sido definida.");
+            }
 
-        | TIDENTIFICADOR TPARI sentCallParams TPARD  /*invocacion*/                                        
+            ScopeIF scope = scopeManager.getCurrentScope();
+            SymbolIF simbolo = scopeManager.searchSymbol(id1.getLexema());
+            TypeRecord tipoRecord = (TypeRecord) scopeManager.searchType(simbolo.getType().getName());
+
+            // El campo existe en el registro id1
+            if (! tipoRecord.containsCampo(id2.getLexema() )) {
+                semanticErrorManager.semanticFatalError ("El campo registro: " + id2.getLexema() +" en [" + id2.getLine() + ":" + id2.getColumn() + "] no ha sido definida.");
+            }
+
+            Expresion e = new Expresion(tipoRecord.getTypeCampo(id2.getLexema()), id2.getLine(), id2.getColumn());
+            HashMap tablaCampos = tipoRecord.getTablaCampos();
+            SymbolVariable simboloCampo = (SymbolVariable) tablaCampos.get(id2.getLexema()); 
+            //Obtener la posición que ocupa el campo id2 dentro del registro id1
+            
+            //Código intermedio
+            TemporalFactory tF = new TemporalFactory(scope);
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
+            TemporalIF temp = tF.create();
+            TemporalIF temp1 = tF.create();
+            TemporalIF temp2 = tF.create();
+            TemporalIF temp3 = tF.create();
+            SymbolIF sV = scopeManager.searchSymbol(id1.getLexema());
+            Variable var = new Variable(id1.getLexema(), sV.getScope()); 
+            
+            cb.addQuadruple("MVA", temp1, var); //dirección base de la variable 
+            cb.addQuadruple("MV", temp2, 1); //desplazamiento
+            cb.addQuadruple("ADD", temp3, temp1, temp2);
+            cb.addQuadruple("MVP", temp, temp3);
+            e.setTemporal(temp);
+            e.setIntermediateCode (cb.create());
+
+            RESULT = e;
+        :}
+
+        | TIDENTIFICADOR TPARI sentCallParams TPARD  /*invocacion*/      {:
+
+        :}                                  
         | error   
     ;
 

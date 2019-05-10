@@ -13,6 +13,10 @@ public class Temporal
     private String  name    = null;
     private ScopeIF scope   = null;
     private int     address = 0;
+    int desplazamiento;
+    private int size;
+
+
            
     /**
      * Constructor for Temporal.
@@ -126,5 +130,21 @@ public class Temporal
     public final String toString ()
     {        
         return name;
+    }
+
+    public int getDesplazamiento() {
+        return this.desplazamiento;
+    }
+
+    public void setDesplazamiento(int desplazamiento) {
+        this.desplazamiento = desplazamiento;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
     }
 }

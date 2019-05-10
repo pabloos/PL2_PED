@@ -14,6 +14,8 @@ public class TypeSet
     extends TypeBase
 {
     
+    private int valIni;
+    private int valFin;
     /**
      * Constructor for TypeSet.
      * @param scope The declaration scope.
@@ -42,5 +44,9 @@ public class TypeSet
     {
         // TODO: Student work
         return 1;
+    }
+
+    public int getTamanyo() {
+        return (this.valFin - this.valIni +1);
     }
 }

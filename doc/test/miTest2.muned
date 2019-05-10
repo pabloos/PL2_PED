@@ -1,0 +1,112 @@
+(*
+ *************************************************************
+ * PUTEADOR - COMPROBADOR DE NIVEL 2 (NIVEL MEDIO) PARA PL2  *
+ *                   BY NOMED - GRUPO B                      *
+ *************************************************************
+ * COMO USAR ESTE PUTEADOR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      *
+ * 1)SI LO EJECUTAS CONFORME ESTA,TU COMPILADOR NO DEBERIA   *
+ *   GENERARTE NINGUN ERROR						     	     *
+ * 2)PERO SI DESCOMENTAS UNO A UNO LOS COMENTARIOS EN ESE    *
+ * PUNTO DEBE DE DETECTAR EL ERROR DESCRITO A LA DERECHA     *
+ *************************************************************                                  
+ * USALO, MEJORALO Y COMPARTELO                              *
+ * 				PERO SOBRE TODO APRUEBA ESTA MEGDA           *
+ *************************************************************
+ * SI TE SIRVIO PARA MEJORAR TU PED DIMELO Y TE PASO         *
+ *			EL TEST DE NIVEL 3 (NIVEL JODIDO)                *
+ *************************************************************
+ * 	         			RESPETO Y HACKING                    *
+ *************************************************************
+*)
+
+(*NIVEL 1 COMPROBRACION DE :
+CONST - VAR - TYPE - EXPRESIONES LOGICAS - EXPRESIONES ARITMETICAS
+- SENTENCIAS Y RETURN EN EL PROGRAMA PRINCIPAL Y EN BLOQUES IF Y FOR - BLOQUES IF-THEN-ELSE
+CON Y SIN RETURN - BUCLES FOR *)
+
+
+MODULE dos;
+  CONST const1 = 10;
+  		const2 = 20;
+  		const3 = FALSE;
+  		const4 = TRUE;
+ 		
+  		
+  TYPE 	tipo1 = ARRAY[1..const1] OF INTEGER;
+  		tipo2 = ARRAY[1..20] OF BOOLEAN;
+  		
+  VAR 	var1:BOOLEAN;
+  		var2:INTEGER;
+  		var3:tipo1;
+  		var4:tipo2;
+  		var10,var11,var12:BOOLEAN;
+  		var20,var21,var22:INTEGER;
+  
+  PROCEDURE funcion1(a,b:INTEGER;c:BOOLEAN):INTEGER;
+  BEGIN
+	RETURN 1;
+  END funcion1; 
+  
+  PROCEDURE funcion2(a,b,c:INTEGER);
+  BEGIN
+  END funcion2;
+  
+  (*
+  PROCEDURE funcion3:INTEGER;
+  BEGIN
+  END funcion3;	
+  *)											(*falta return*)
+  
+  (*
+  PROCEDURE funcion3;
+  BEGIN
+  	RETURN 1;
+  END funcion3;
+  *)											(*no se necesita return*)
+  
+  PROCEDURE funcion3;
+  BEGIN
+  END funcion3;	
+  
+  PROCEDURE funcion4;
+  BEGIN
+  	WRITELN;
+  END funcion4;
+  
+  BEGIN
+  	funcion3;
+  	funcion4;
+  	funcion4();
+  	(*funcion2;*)								(*error faltan los parametros*)
+  	(*funcion2();*)								(*error faltan los parametros*)
+  	funcion2(1,2,3);
+  	(*var2:= funcion2(1,2,3);*)					(*error funcion2 no es una funcion*)
+  	var2:=funcion1(1,2,FALSE);
+
+	(*var10 := (1 = 1) OR 1;*)					(*error la segunda expresion no es booleana*)
+	(*1>1;*)									(*error mandar mensaje apra revisar a partir del BEGIN*)
+	(*var10;*)									(*var10 no es un procedure*)
+	
+	var10:=(1>1) OR FALSE;
+	var20:= 10 - 1 - 1;
+	
+	var20:=funcion1(2-2,3-4,(1>1));
+	(*var20:=funcion1(2-2,1>1,(1>1));*)			(*error param 2 debe ser entero*)
+	var20:=funcion1(2-2,var3[2],(1>1));	
+
+	FOR var20:=1 TO 10 DO
+		var3[var20]:=var20;
+		WRITEINT(var20);
+	END;
+	
+	FOR var20:=1 TO 20 DO
+		var4[var20]:= NOT ((5-3)-4 > 6-1);
+	END;
+
+	(*
+	FOR var20:=1 TO 20 DO
+		var4[var20]:= NOT ((5-3)-4 > FALSE);	(*error el FALSE deberia ser entero*)
+	END;
+	*)
+
+  END dos;

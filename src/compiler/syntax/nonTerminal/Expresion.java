@@ -3,6 +3,28 @@ package compiler.syntax.nonTerminal;
 import es.uned.lsi.compiler.intermediate.OperandIF;
 import es.uned.lsi.compiler.semantic.type.TypeIF;
 
+import java_cup.runtime.Symbol;
+import java.util.*;
+
+import es.uned.lsi.compiler.lexical.*;
+import es.uned.lsi.compiler.code.*;
+import es.uned.lsi.compiler.intermediate.*;
+import es.uned.lsi.compiler.semantic.*;
+import es.uned.lsi.compiler.semantic.symbol.*;
+import es.uned.lsi.compiler.semantic.type.*;
+import es.uned.lsi.compiler.syntax.*;
+
+import compiler.CompilerContext;
+import compiler.lexical.*;
+import compiler.syntax.nonTerminal.*;
+import compiler.semantic.*;
+import compiler.semantic.symbol.*;
+import compiler.semantic.type.*;
+import compiler.intermediate.*;
+import compiler.code.*;
+
+import compiler.semantic.utils.*;
+
 public class Expresion extends NonTerminal {
     private TypeIF tipo;
     private OperandIF resultado;
@@ -11,6 +33,18 @@ public class Expresion extends NonTerminal {
     private boolean referencia = false;     // Indica si una variable puede ser de referencia.
     private int valIni;                     // Valor inicial cjto
     private int valFin;                     // Valor final   cjto
+
+    private TemporalIF temporal; 
+    private List<QuadrupleIF> code;
+    
+    public List<QuadrupleIF> getCode () { return code;
+    }
+    public void setCode (List<QuadrupleIF> code) { this.code = code;
+    }
+    public TemporalIF getTemporal () { return temporal;
+    }
+    public void setTemporal (TemporalIF temporal) { this.temporal = temporal;
+    }
 
     // constructores
     public Expresion(TypeIF tipo, int linea, int columna) {

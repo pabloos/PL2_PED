@@ -1,7 +1,10 @@
 package compiler.intermediate;
 
+import java.util.HashMap;
+
 import es.uned.lsi.compiler.intermediate.VariableIF;
 import es.uned.lsi.compiler.semantic.ScopeIF;
+import es.uned.lsi.compiler.intermediate.LabelIF;
 
 /**
  * Class for variables in intermediate code.
@@ -10,10 +13,23 @@ import es.uned.lsi.compiler.semantic.ScopeIF;
 public class Variable
     implements VariableIF 
 {
-    private String  name     = null;
-    private ScopeIF scope    = null;
+    String  name  = null;
+    ScopeIF scope = null;
+    private HashMap tablaDespl = new HashMap(); 
+    private LabelIF etiqRetorno;
+    private LabelIF etiqSub;
+    private int desplCampo;   // Utilizada unicamente para registros
     private ScopeIF ambito;
 
+    /**
+     * Constructor for Variable.
+     * @param name The name.
+     */
+    public Variable (String name)
+    {
+        this.name = name;
+    }
+    
     /**
      * Constructor for Variable.
      * @param name The name.
@@ -21,8 +37,7 @@ public class Variable
      */
     public Variable (String name, ScopeIF scope)
     {
-        super ();
-        this.name = name;
+        this (name);
         this.scope = scope;
     }
 
@@ -30,52 +45,72 @@ public class Variable
      * Returns the name.
      * @return Returns the name.
      */
-    @Override
-    public final String getName ()
+    public String getName ()
     {
         return name;
+    }
+
+    /**
+     * Sets The name.
+     * @param name The name to set.
+     */
+    public void setName (String name)
+    {
+        this.name = name;
+    }
+    public LabelIF getEtiqRetorno ()
+    {
+        return etiqRetorno;
+    }
+
+    /**
+     * Sets The name.
+     * @param name The name to set.
+     */
+    public void setEtiqSub (LabelIF name)
+    {
+        this.etiqSub = name;
+    }
+    public LabelIF getEtiqSub ()
+    {
+        return etiqSub;
+    }
+
+    /**
+     * Sets The name.
+     * @param name The name to set.
+     */
+    public void setEtiqRetorno (LabelIF name)
+    {
+        this.etiqRetorno = name;
     }
 
     /**
      * Returns the scope.
      * @return Returns the scope.
      */
-    @Override
-    public final ScopeIF getScope ()
+    public ScopeIF getScope ()
     {
         return scope;
     }
 
     /**
-     * Returns the address.
-     * @return Returns the address.
+     * Sets The scope.
+     * @param scope The scope to set.
      */
-    @Override
-    public final int getAddress ()
+    public void setScope (ScopeIF scope)
     {
-        // TODO : Student Work
-        return 0;
+        this.scope = scope;
     }
-
-    /**
-     * Indicates whether the address is a global address.
-     * @return true if the address is a global address.
-     */
-    @Override
-    public final boolean isGlobal ()
-    {
-        // TODO : Student Work
-        return true;
-    }
-
+    
     /**
      * Compares this object with another one.
      * @param other the other object.
      * @return true if both objects has the same properties.
      */
-    @Override
-    public final boolean equals (Object other)
+    public boolean equals (Object other)
     {
+        // TODO: Student Work (optional)
         if (other == null) 
         {
             return false;
@@ -90,28 +125,32 @@ public class Variable
         }
         
         final Variable aVariable = (Variable) other;
-        return ((scope   == null) ? (aVariable.scope == null) : (aVariable.scope.equals (scope))) && 
-               ((name    == null) ? (aVariable.name  == null) : (aVariable.name.equals (name)));
+        return ((scope != null) ? (scope == aVariable.scope) : aVariable.scope == null) && 
+               ((name  != null) ? (name  == aVariable.name)  : aVariable.name  == null);
     }
 
     /**
      * Returns a hash code for the object.
      */
-    @Override
-    public final int hashCode ()
+    public int hashCode ()
     {
-        return 31 * scope.hashCode() +
-                  ((name == null)? 0 : name.hashCode ());
+        // TODO: Student Work (optional)
+        return 255 * scope.hashCode() +
+               ((name != null)? name.hashCode () : 0);
     } 
+    // Gestion de tabla desplaz.
+    public HashMap getTablaDespl(){
+        return tablaDespl;
+    }
+    public void setTablaDespl(HashMap tablaDespl){
+        this.tablaDespl=tablaDespl;
+    }
+    public int getDesplCampo() {
+        return desplCampo;
+    }
 
-    /**
-     * Return a string representing the object.
-     * @return a string representing the object.
-     */
-    @Override
-    public final String toString ()
-    {    
-        return name;
+    public void setDesplCampo(int desplCampo) {
+        this.desplCampo = desplCampo;
     }
 
     public ScopeIF getAmbito() {
@@ -121,5 +160,25 @@ public class Variable
     public void setAmbito(ScopeIF ambito) {
         this.ambito = ambito;
         
+    }
+   
+    /**
+     * Return a string representing the object.
+     * @return a string representing the object.
+     */
+    public String toString ()
+    {    
+        // TODO: Student Work (optional)
+        return name;
+    }
+
+    @Override
+    public int getAddress() {
+        return 0;
+    }
+
+    @Override
+    public boolean isGlobal() {
+        return false;
     }
 }

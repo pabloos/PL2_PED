@@ -28,8 +28,20 @@ END fun;
 
 PROCEDURE proc (VAR v, n: INTEGER; VAR reg: booleano);
 BEGIN
+
+	booleano.campo1 := 1;
+	booleano.campo2 := true;
+
+	peso := 1;
+
 END proc;
 
   BEGIN
+		peso := 1;
 
+		(*IF NOT peso <> 1 THEN*)
+		(*	WRITEINT(peso);*)
+		(*(END;*)
+
+		
   END uno;

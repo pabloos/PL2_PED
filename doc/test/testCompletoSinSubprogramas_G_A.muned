@@ -1,0 +1,86 @@
+(* testCompletoSS_G_A v.1 *)
+(* @amontero *)
+(* Test aparentemente completo sin subprogramas grupo A *)
+(* Abril 2019 *)
+
+(* El resultado debería ser
+5
+40
+40
+40
+40
+
+==================
+Asignaturas de Adrian =
+40
+entre
+42
+igual
+0
+==================
+
+Adrian, esto no te va a gustar
+REPITE
+Seré bueno
+NO REPITE
+*)
+
+MODULE test;
+    CONST A = 3;
+	      B = true;
+ 	TYPE TipoAlumno = RECORD 
+                    curso  : INTEGER; 
+                    asigna : INTEGER; 
+                    repite : BOOLEAN; 
+                   END; 
+
+	VAR suma, x, y : INTEGER;
+	    adrian : TipoAlumno;
+BEGIN
+	adrian.curso := A;
+	adrian.asigna := 40;
+	adrian.repite := false;
+	x:=2;
+	y:=3;
+	suma := x + y;
+	if adrian.curso < adrian.asigna then
+		WRITEINT(SUMA);
+	else
+		if (adrian.repite <> true) then
+			WRITESTRING("NO REPITE");
+		else
+			WRITESTRING("REPITE");
+		end;
+	end;
+	while suma < adrian.asigna do
+		WRITEINT(adrian.asigna);
+		x:=x+10;
+		suma:= x+y;
+	end;
+	WRITELN;
+    WRITESTRING("==================");
+	WRITESTRING("Asignaturas de Adrian =");
+	WRITEINT(adrian.asigna);
+	WRITESTRING("entre");
+	WRITEINT(x);
+	WRITESTRING("igual");
+	WRITEINT(adrian.asigna/x);
+    WRITESTRING("==================");
+    WRITELN;
+	WRITESTRING("Adrian, esto no te va a gustar");
+	adrian.repite := NOT adrian.repite;
+	if (adrian.repite <> true) then
+		WRITESTRING("NO REPITE");
+	else
+		WRITESTRING("REPITE");
+	end;	
+	
+	WRITESTRING("Seré bueno");
+	adrian.repite := not (B and adrian.repite);
+	if (adrian.repite) then
+		WRITESTRING("REPITE");
+	else
+		WRITESTRING("NO REPITE");
+	end;	
+
+END test;
