@@ -11,8 +11,6 @@ import compiler.semantic.type.TypeSimple;
 import es.uned.lsi.compiler.code.ExecutionEnvironmentIF;
 import es.uned.lsi.compiler.code.MemoryDescriptorIF;
 import es.uned.lsi.compiler.code.RegisterDescriptorIF;
-import es.uned.lsi.compiler.intermediate.QuadrupleIF;
-
 import es.uned.lsi.compiler.lexical.*;
 import es.uned.lsi.compiler.code.*;
 import es.uned.lsi.compiler.intermediate.*;
@@ -177,23 +175,16 @@ public class ExecutionEnvironmentEns2001
         //TODO: Student work
         String oper = quadruple.getOperation();
         String rdo =null;
-        if (oper.equals("INICIO_PROGRAMA")) { rdo=traducir_INICIO_PROGRAMA(quadruple);
-        }else if (oper.equals("FIN_PROGRAMA")){ rdo=traducir_FIN_PROGRAMA(quadruple);
-        }else if (oper.equals("CADENA")){ rdo=traducir_CADENA(quadruple);
-        }else if (oper.equals("SUB")){ rdo=traducir_SUB(quadruple);
+        if (oper.equals("BEGIN")) { rdo=traducir_INICIO_PROGRAMA(quadruple);
+        }else if (oper.equals("HALT")){ rdo=traducir_FIN_PROGRAMA(quadruple);
+        }else if (oper.equals("STRING")){ rdo=traducir_CADENA(quadruple);
+        }else if (oper.equals("DIV")){ rdo=traducir_SUB(quadruple);
         }else if (oper.equals("ADD")){ rdo=traducir_ADD(quadruple);
         }else if (oper.equals("CMP")){ rdo=traducir_CMP(quadruple);
         }else if (oper.equals("ACCESO_REGISTRO")){ rdo=traducir_ACCESO_REGISTRO(quadruple);
-        }else if (oper.equals("ACCESO_REGISTRO_PUNTERO")){ rdo=traducir_ACCESO_REGISTRO_PUNTERO(quadruple);
-        }else if (oper.equals("ACCESO_PUNTERO")){ rdo=traducir_ACCESO_PUNTERO(quadruple);
-        }else if (oper.equals("DIR_MEM")){ rdo=traducir_DIR_MEM(quadruple);
-        }else if (oper.equals("DIR_MEM_REGISTRO")){ rdo=traducir_DIR_MEM_REGISTRO(quadruple);
-        }else if (oper.equals("ASIG")){ rdo=traducir_ASIG(quadruple);
+        }else if (oper.equals("ASIGNACION")){ rdo=traducir_ASIG(quadruple);
         }else if (oper.equals("ASIG_REGISTRO")){ rdo=traducir_ASIG_REGISTRO(quadruple);
-        }else if (oper.equals("ASIG_PUNTERO")){ rdo=traducir_ASIG_PUNTERO(quadruple);
-        }else if (oper.equals("ASIG_REGISTRO_PUNTERO")){ rdo=traducir_ASIG_REGISTRO_PUNTERO(quadruple);
-        }else if (oper.equals("ASIG_SET")){ rdo=traducir_ASIG_SET(quadruple);
-        }else if (oper.equals("ETIQUETA")){ rdo=traducir_ETIQUETA(quadruple);
+        }else if (oper.equals("LABEL")){ rdo=traducir_ETIQUETA(quadruple);
         }else if (oper.equals("BZ")){ rdo=traducir_BZ(quadruple);
         }else if (oper.equals("BNZ")){ rdo=traducir_BNZ(quadruple);
         }else if (oper.equals("BN")){ rdo=traducir_BN(quadruple);        
@@ -206,21 +197,68 @@ public class ExecutionEnvironmentEns2001
         }else if (oper.equals("INICIO_ARGUMENTOS")){ rdo=traducir_INICIO_ARGUMENTOS(quadruple);
         }else if (oper.equals("RETORNO")){ rdo=traducir_RETORNO(quadruple);
         }else if (oper.equals("INICIO_SUBPROG")){ rdo=traducir_INICIO_SUBPROG(quadruple);
-        }else if (oper.equals("FIN_SUBPROG")){ rdo=traducir_FIN_SUBPROG(quadruple);
-        }else if (oper.equals("INICIAR_SET")){ rdo=traducir_INICIAR_SET(quadruple);
-        }else if (oper.equals("CARGAR_SET")){ rdo=traducir_CARGAR_SET(quadruple);
-        }else if (oper.equals("IN_SET")){ rdo=traducir_IN_SET(quadruple);
-        }else if (oper.equals("UNION_SET")){ rdo=traducir_UNION_SET(quadruple);
-        
+        }else if (oper.equals("FIN_SUBPROG")){ rdo=traducir_FIN_SUBPROG(quadruple);        
         }else if (oper.equals("WRSTR")){ rdo=traducir_WRSTR(quadruple);
         }else if (oper.equals("WRTLN")){ rdo=traducir_WRTLN(quadruple);
         }else if (oper.equals("WRINT")){ rdo=traducir_WRINT(quadruple);
         }else if (oper.equals("NOP")){ rdo="NOP";
-        
+        } else if (oper.equals("NOT")) { rdo=traducir_NOT(quadruple); 
         }
         return rdo;
          
     }
+
+    //NOS QUEDAMOS AQUI - HAY QUE TRADUCIR EL BRF DE LA VENTANA DE AL LADO, DA REFLEXTION ERROR
+    // private String traducir_BRF(QuadrupleIF quadruple) {
+    //    String trad=";Salto si es falso \r\n";
+
+	// 	String op1 = ((LabelIF) quadruple.getFirstOperand()).toString();
+	// 	// String res = quadruple.getSecondOperand().toString();
+	// 	// trad = trad + "CMP "+res+", #0 \r\n";
+    //     // trad = trad + "BZ /"+op1+"\r\n";
+
+    //     return trad;
+
+    // }
+
+    private String traducir_NOT(QuadrupleIF quadruple) {
+        //OperandIF operador1;// = quadruple.getResult();
+
+        System.out.println("QUADRUPLA " + quadruple);
+
+        OperandIF oper1= quadruple.getFirstOperand();
+        String operador1="";
+
+         if (oper1 instanceof Value) {
+            Value cte = (Value) oper1;
+            operador1 = "#" + cte.getValue();
+        } else {
+            if (oper1 instanceof Variable) {
+                Variable var = (Variable) oper1;
+                SymbolVariable SimVar = (SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
+                if ( SimVar.getScope().getName().equals(var.getScope().getName()) ){ 
+                   operador1 = "#-" + SimVar.getDesplazamiento() + "[.IY]";
+                } /* else {
+                   // Variable en otro ambito 
+                   trad=trad+"MOVE /"+SimVar.getScope().getLevel()+" , .R1 \n";
+                   trad=trad+"DIV .R1 , #"+SimVar.getDesplazamiento()+"\n";
+                   trad=trad+"MOVE [.A] , .R2 \n";
+                   operador1 = ".R2";
+                } */
+            } else {
+                System.out.println("oper "+ oper1);
+
+                Temporal temp = (Temporal) oper1;
+                System.out.println("TEMPORAL "+temp);
+                
+                int desp = temp.getDesplazamiento();
+                operador1 = "#-" + desp + "[.IY]";
+            }
+        }
+
+        return "NOT " + operador1;
+    }
+
     private String traducir_INICIO_PROGRAMA (QuadrupleIF quadruple) {
         // Inicializar la lista de llamadas
         for (int k=0; k<30;k++){
@@ -242,11 +280,11 @@ public class ExecutionEnvironmentEns2001
         //                  "MOVE "+ PUNTERO_MARCO+" , /0";
 
         String trad =   "; INICIO\n" + 
-                        "MOVE .SP .IX\n" +
+                        "MOVE .SP, .IX\n" +
                         "PUSH .IX\n" + 
                         "PUSH .SR\n" + 
-                        "SUB .IX\n" +
-                        "MOVE .A .SP\n";
+                        ";SUB .IX\n" +
+                        "MOVE .A, .SP\n";
 
         return trad;
     }
@@ -310,7 +348,7 @@ public class ExecutionEnvironmentEns2001
                     
                    // Variable en otro ambito 
                    trad=trad+"MOVE /"+SimVar.getScope().getLevel()+" , .R3 \n";
-                   trad=trad+"SUB .R3 , #"+SimVar.getDesplazamiento()+"\n";
+                   trad=trad+"DIV .R3 , #"+SimVar.getDesplazamiento()+"\n";
                    trad=trad+"MOVE [.A] , .R4 \n";
                    operador2 = ".R4";
                 }
@@ -335,7 +373,7 @@ public class ExecutionEnvironmentEns2001
                 resultado="#-" + desp + "[.IY]";
             }
         }
-        trad=trad+"SUB " + operador1 + ", " + operador2 + "\n";
+        trad=trad+"DIV " + operador1 + ", " + operador2 + "\n";
         trad=trad+"MOVE " + ".A, " + resultado;
         return trad;
     }
