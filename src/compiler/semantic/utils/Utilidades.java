@@ -1,33 +1,17 @@
 package compiler.semantic.utils;
 
-import compiler.lexical.Token;
-import compiler.syntax.nonTerminal.Lista;
-import compiler.syntax.nonTerminal.Parametro;
-import es.uned.lsi.compiler.semantic.type.TypeIF;
-
-import es.uned.lsi.compiler.lexical.*;
-import es.uned.lsi.compiler.code.*;
-import es.uned.lsi.compiler.intermediate.*;
-import es.uned.lsi.compiler.semantic.*;
-import es.uned.lsi.compiler.semantic.symbol.*;
-import es.uned.lsi.compiler.semantic.type.*;
-import es.uned.lsi.compiler.syntax.*;
-
-import compiler.CompilerContext;
-import compiler.lexical.*;
-import compiler.syntax.nonTerminal.*;
-import compiler.semantic.*;
-import compiler.semantic.symbol.*;
-import compiler.semantic.type.*;
-import compiler.intermediate.*;
-import compiler.code.*;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeMap;
 
+import compiler.syntax.nonTerminal.Lista;
+import compiler.syntax.nonTerminal.Parametro;
+import es.uned.lsi.compiler.semantic.type.TypeIF;
+
+import es.uned.lsi.compiler.semantic.*;
+import es.uned.lsi.compiler.semantic.type.*;
 
 public class Utilidades {
     /** Creates a new instance of Utilidades */
@@ -35,7 +19,7 @@ public class Utilidades {
     }
 
     public static String getTypeOfValue(String value) { // PARA CONSTANTES
-        if(value.equals("TRUE") || value.equals("FALSE")) { // es un booleano
+        if(value.toUpperCase().equals("TRUE") || value.toUpperCase().equals("FALSE")) { // es un booleano
             return "BOOLEAN";
         } else if (value.matches("-?\\d+(\\.\\d+)?")) {   // es un entero
            return "INTEGER";

@@ -3,27 +3,10 @@ package compiler.syntax.nonTerminal;
 import es.uned.lsi.compiler.intermediate.OperandIF;
 import es.uned.lsi.compiler.semantic.type.TypeIF;
 
-import java_cup.runtime.Symbol;
 import java.util.*;
 
-import es.uned.lsi.compiler.lexical.*;
-import es.uned.lsi.compiler.code.*;
 import es.uned.lsi.compiler.intermediate.*;
-import es.uned.lsi.compiler.semantic.*;
-import es.uned.lsi.compiler.semantic.symbol.*;
-import es.uned.lsi.compiler.semantic.type.*;
-import es.uned.lsi.compiler.syntax.*;
 
-import compiler.CompilerContext;
-import compiler.lexical.*;
-import compiler.syntax.nonTerminal.*;
-import compiler.semantic.*;
-import compiler.semantic.symbol.*;
-import compiler.semantic.type.*;
-import compiler.intermediate.*;
-import compiler.code.*;
-
-import compiler.semantic.utils.*;
 
 public class Expresion extends NonTerminal {
     private TypeIF tipo;
@@ -31,22 +14,26 @@ public class Expresion extends NonTerminal {
     private int linea;
     private int columna;
     private boolean referencia = false;     // Indica si una variable puede ser de referencia.
-    private int valIni;                     // Valor inicial cjto
-    private int valFin;                     // Valor final   cjto
 
     private TemporalIF temporal; 
     private List<QuadrupleIF> code;
     
-    public List<QuadrupleIF> getCode () { return code;
-    }
-    public void setCode (List<QuadrupleIF> code) { this.code = code;
-    }
-    public TemporalIF getTemporal () { return temporal;
-    }
-    public void setTemporal (TemporalIF temporal) { this.temporal = temporal;
+    public List<QuadrupleIF> getCode () { 
+        return code;
     }
 
-    // constructores
+    public void setCode (List<QuadrupleIF> code) { 
+        this.code = code;
+    }
+
+    public TemporalIF getTemporal () { 
+        return temporal;
+    }
+
+    public void setTemporal (TemporalIF temporal) { 
+        this.temporal = temporal;
+    }
+
     public Expresion(TypeIF tipo, int linea, int columna) {
         this.tipo = tipo;
         this.linea = linea;
@@ -60,7 +47,6 @@ public class Expresion extends NonTerminal {
     public Expresion() {
     }
     
-    // set y gets
     public int getLinea() {
         return linea;
     }
@@ -99,22 +85,6 @@ public class Expresion extends NonTerminal {
 
     public void setReferencia(boolean referencia) {
         this.referencia = referencia;
-    }
-
-    public int getValFin() {
-        return valFin;
-    }
-
-    public void setValFin(int valFin) {
-        this.valFin = valFin;
-    }
-
-    public int getValIni() {
-        return valIni;
-    }
-
-    public void setValIni(int valIni) {
-        this.valIni = valIni;
     }
     
     // Conversi�n de tipos

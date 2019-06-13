@@ -7,18 +7,16 @@ import es.uned.lsi.compiler.semantic.symbol.SymbolIF;
 import es.uned.lsi.compiler.semantic.type.TypeBase;
 import es.uned.lsi.compiler.semantic.type.TypeIF;
 
+
 /**
  * Class for TypeRecord.
  */
-
-// TODO: Student work
-//       Include properties to characterize records
 
 public class TypeRecord
     extends TypeBase
 {   
     // Definicion de campos del registro
-    private HashMap tablaCampos = new HashMap(); 
+    private HashMap<String, SymbolIF> tablaCampos = new HashMap<String, SymbolIF>(); 
     private int size;
            
     /**
@@ -50,10 +48,11 @@ public class TypeRecord
     }
 
     // Gestion de campos del registro
-    public HashMap getTablaCampos(){
+    public HashMap<String, SymbolIF> getTablaCampos(){
         return tablaCampos;
     }
-    public void setTablaCampos(HashMap tablaCampos){
+    
+    public void setTablaCampos(HashMap<String, SymbolIF> tablaCampos){
         this.tablaCampos=tablaCampos;
     }
     
@@ -73,7 +72,7 @@ public class TypeRecord
     // Anyadir Campos al Registro
     public void addCampos (String name, SymbolIF simbolo)
     {
-        this.getTablaCampos().put(name, simbolo);
+        this.tablaCampos.put(name, simbolo);
     
     }
     public void setSize(int size){
@@ -88,10 +87,8 @@ public class TypeRecord
      * @return true if both objects has the same properties.
      */
     
-    public boolean containsCampo (String name)
-    {
-        // TODO: Student work
-        return this.getTablaCampos().containsKey(name);
+    public boolean containsCampo (String name) {
+        return this.tablaCampos.containsKey(name);
     }
 
 }

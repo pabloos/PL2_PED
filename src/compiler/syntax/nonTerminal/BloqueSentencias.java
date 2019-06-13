@@ -6,8 +6,8 @@ package compiler.syntax.nonTerminal;
 
 import java.util.ArrayList;
 import java.util.List;
-import es.uned.lsi.compiler.semantic.type.TypeIF;
 
+import es.uned.lsi.compiler.semantic.type.TypeIF;
 import es.uned.lsi.compiler.intermediate.OperandIF;
 
 /**
@@ -49,22 +49,7 @@ public class BloqueSentencias extends NonTerminal {
     public void setTieneDevuelve(Boolean tieneDevuelve) {
         this.tieneDevuelve = tieneDevuelve;
     }
-/*
-    public void fusionaCodigoIntermedio(List lista2) {
-        List listadevuelve = new ArrayList();
-        if (this.codigoIntermedio!=null) {
-            for (int i = 0; i < this.codigoIntermedio.size(); i++) {
-                listadevuelve.add(this.codigoIntermedio.get(i));
-            }
-        }
-        if (lista2!=null) {
-            for (int j = 0; j < lista2.size(); j++) {
-                listadevuelve.add(lista2.get(j));
-            }
-        }
-        this.setIntermediateCode(listadevuelve);
-    }
-*/
+
     public OperandIF getResultado() {
         return resultado;
     }

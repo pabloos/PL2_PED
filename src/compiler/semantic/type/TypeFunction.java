@@ -1,49 +1,23 @@
 package compiler.semantic.type;
 
-import es.uned.lsi.compiler.semantic.ScopeIF;
-
-import compiler.intermediate.Label;
-import compiler.semantic.symbol.SymbolVariable;
-import compiler.semantic.utils.Utilidades;
-import compiler.syntax.nonTerminal.Expresion;
-import compiler.syntax.nonTerminal.Lista;
-import compiler.syntax.nonTerminal.Parametro;
-
-import es.uned.lsi.compiler.intermediate.LabelIF;
-// import es.uned.compiler.semantic.symbol.ScopeIF;
-// import es.uned.compiler.semantic.symbol.ScopeManager;
-import es.uned.lsi.compiler.semantic.type.TypeBase;
-import es.uned.lsi.compiler.semantic.type.TypeIF;
-
-import es.uned.lsi.compiler.lexical.*;
-import es.uned.lsi.compiler.code.*;
-import es.uned.lsi.compiler.intermediate.*;
-import es.uned.lsi.compiler.semantic.*;
-import es.uned.lsi.compiler.semantic.symbol.*;
-import es.uned.lsi.compiler.semantic.type.*;
-import es.uned.lsi.compiler.syntax.*;
-
-import compiler.CompilerContext;
-import compiler.lexical.*;
-import compiler.syntax.nonTerminal.*;
-import compiler.semantic.*;
-import compiler.semantic.symbol.*;
-import compiler.semantic.type.*;
-import compiler.intermediate.*;
-import compiler.code.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
+import es.uned.lsi.compiler.semantic.ScopeIF;
+
+import compiler.semantic.symbol.SymbolVariable;
+import compiler.semantic.utils.Utilidades;
+import compiler.syntax.nonTerminal.Expresion;
+import compiler.syntax.nonTerminal.Lista;
+
+import es.uned.lsi.compiler.intermediate.LabelIF;
+import es.uned.lsi.compiler.semantic.type.TypeBase;
+import es.uned.lsi.compiler.semantic.type.TypeIF;
 
 /**
  * Class for TypeFunction.
  */
-
-// TODO: Student work
-//       Include properties to characterize function declarations
-
 
 public class TypeFunction
     extends TypeBase
