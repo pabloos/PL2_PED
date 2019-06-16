@@ -166,7 +166,7 @@ public class ExecutionEnvironmentEns2001
                         ";SUB .IX\n" +
                         "MOVE .A, .SP\n";
 
-        return "";
+        return trad;
     }
 
     private String traducir_FIN_PROGRAMA(QuadrupleIF quadruple){ //BIEN
@@ -466,11 +466,11 @@ public class ExecutionEnvironmentEns2001
         // Se trata despu�s la asignaci�n por temas del acumulador
         if (SimVar1.getScope().getName().equals(var1.getScope().getName())) {
             trad = trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar1.getDesplazamiento()+var2.getDesplCampo())+"\n";  
-        } else {
+        } /* else {
             // Variable en otro ambito 
             trad = trad + "MOVE /" + SimVar1.getScope().getLevel() + " , .R1 \n";
             trad= trad+"SUB .R1 , #"+(SimVar1.getDesplazamiento()+var2.getDesplCampo())+"\n";  
-        }
+        } */
         trad= trad+"MOVE "+operador2+" , [.A]";
         return trad;
     }

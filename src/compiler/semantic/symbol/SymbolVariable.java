@@ -8,15 +8,13 @@ import es.uned.lsi.compiler.semantic.type.TypeIF;
  * Class for SymbolVariable.
  */
 
-// TODO: Student work
-//       Include properties to characterize variables
-
 public class SymbolVariable
     extends SymbolBase
 {  
     private int desplazamiento;
     private boolean referencia;
     private int size;       // Tamanyo para conjuntos
+
     /**
      * Constructor for SymbolVariable.
      * @param scope The declaration scope.

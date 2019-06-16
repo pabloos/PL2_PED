@@ -37,7 +37,9 @@ action code   {:
 	// cadenas que aniadir al final  del archivo en ensamblador
 	List cadenas = new ArrayList();
 	// Desplazamiento con RA principal
-	int despl=0;
+	int despl = 0;
+    // posicion en los registros
+    int pos = 0;
 :}	
 
 parser code {:
@@ -209,7 +211,7 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
 
             RESULT = ax;
         :}
-        | TMODULE error {:syntaxErrorManager.syntaxFatalError("001. No se ha especificado nombre al programa");:}
+        | TMODULE error {:syntaxErrorManager.syntaxFatalError("1. No se ha especificado nombre al programa");:}
             
     ;
 
@@ -305,6 +307,9 @@ tipo ::= TIDENTIFICADOR:id TIGUAL registro:lista {: //aqui registramos el tipo
             }
 
             tablaTipos.addType(tipoRegistro);
+            
+            pos = 0;
+
         :} ntPtoComa
         | error
             
@@ -337,7 +342,8 @@ regCampo ::= TIDENTIFICADOR:id TDOSPTS tipoPrimitivo:tipo {:
                 semanticErrorManager.semanticFatalError ("210. El tipo en el registro : " + identificador + "[" + id.getLine() + ":" + id.getColumn() + "] no es bool o int.");
             }
 
-            SymbolIF reg = new SymbolVariable(scopeManager.getCurrentScope(), identificador.toUpperCase(), tipoPrimitivo);
+            SymbolIF reg = new SymbolVariable(scopeManager.getCurrentScope(), identificador.toUpperCase(), tipoPrimitivo, pos);
+            pos++;
 
             RESULT = reg;
         :} ntPtoComa
@@ -378,38 +384,9 @@ var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
 
                 // comprobamos que la variable no ha sido declarada anteriormente y la guardamos en la tabla de simbolos
                 if (!tablaSimbolos.containsSymbol(name.toUpperCase()) ){		
-                    semanticErrorManager.semanticDebug("Anadiendo la variable " + name + " a la tabla de simbolos");
-                    
-                    if (tipo.toUpperCase() != "INTEGER" && tipo.toUpperCase() != "BOOLEAN") { //es un registro                        
-                        TypeRecord type = (TypeRecord) tablaTipos.getType(tipo.toUpperCase());
-
-                        HashMap campos = type.getTablaCampos();
-
-                        Iterator it = campos.entrySet().iterator();
-                        while (it.hasNext()) {
-                            despl++;
-
-                            Map.Entry pair = (Map.Entry)it.next();
-                            // System.out.println(pair.getKey() + " = " + pair.getValue());
-                            
-                            SymbolIF campo = (SymbolIF) pair.getValue();
-
-                            TypeIF tipoDelCampo = campo.getType();
-
-                            SymbolVariable simboloVar = new SymbolVariable(scope, (name + "." +(String) pair.getKey()).toUpperCase(), tipoDelCampo, despl);
-                            tablaSimbolos.addSymbol( (name + "." + (String) pair.getKey()).toUpperCase(), simboloVar); 
-
-                        }
-
-                        SymbolVariable simboloVR = new SymbolVariable(scope, name.toUpperCase(), scopeManager.searchType(tipo.toUpperCase()), despl);
-                        tablaSimbolos.addSymbol(name.toUpperCase(), simboloVR);   
-
-                    } else {
                         despl++;
-
-                        SymbolVariable simboloVar = new SymbolVariable(scope, name.toUpperCase(), scopeManager.searchType(tipo.toUpperCase()), despl);
-                        tablaSimbolos.addSymbol(name.toUpperCase(), simboloVar);   
-                    }                                    	
+                        SymbolVariable simboloVR = new SymbolVariable(scope, name.toUpperCase(), scopeManager.searchType(tipo.toUpperCase()), despl);
+                        tablaSimbolos.addSymbol(name.toUpperCase(), simboloVR);                                   	
                 } else {
                     semanticErrorManager.semanticFatalError ("210. La variable: " + name + " en [" + v.getLine() + ":" + v.getColumn() + "] ya ha sido definida.");
                 }
@@ -651,43 +628,48 @@ sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está
                 String identificador = id.getLexema().toUpperCase();
                 String nombreCampo = campo.getLexema().toUpperCase();
 
-                ScopeIF scope = scopeManager.getCurrentScope();
-                IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope); 
-                BloqueSentencias bloque = new BloqueSentencias();
-
-                SymbolTableIF tablaSimbolos = scope.getSymbolTable();
-
-                if (!(scopeManager.containsSymbol(identificador))) {
-                    semanticErrorManager.semanticFatalError("La variable de registro: " + identificador +" en [" + id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
+                if ( !(scopeManager.containsSymbol(identificador)) ) {
+                    semanticErrorManager.semanticFatalError ("286. La variable: " + identificador +" en [" + id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
                 } else {
-                    if (!(scopeManager.containsSymbol(identificador + "." + nombreCampo))) {
-                        semanticErrorManager.semanticFatalError("El campo de registro: " + identificador + "." + nombreCampo +" en [" +  id.getLine() + ":" + id.getColumn() + "] no ha sido definida.");
+                    SymbolIF simbolo = scopeManager.searchSymbol(identificador);
+                    TypeIF tipo = scopeManager.searchType(simbolo.getType().getName().toUpperCase());
+
+                    if ( !(tipo instanceof TypeRecord) ) {
+                        semanticErrorManager.semanticFatalError ("290. La variable: " + identificador +" en [" + id.getLine() + ":" + id.getColumn() + "] no es un tipo RECORD.");
                     }
 
-                    SymbolIF simbolo = scopeManager.searchSymbol(identificador + "." + nombreCampo);
-                    TypeIF tipo = simbolo.getType();
-
-                    // Comprobamos que no es una constante
-                    if (simbolo instanceof SymbolConstant) {
-                        semanticErrorManager.semanticFatalError ("La constante: " + identificador +" en [" +  id.getLine() + ":" + id.getColumn() + "] no admite asignaciones.");
-                    } else {
-                        if(!tipo.getName().toUpperCase().equals(exp.getTipo().getName().toUpperCase())){ //los tipos son distintos
-                            semanticErrorManager.semanticFatalError("Los tipos de la asignación no cuadran");
-                        } else {
-                            // Creamos codigo para la sentencia 
-                            Variable var = new Variable(identificador + "." + nombreCampo, scope);
-
-                            var.setAmbito(simbolo.getScope());
-                            List code1 = exp.getIntermediateCode();
-                            cb.addQuadruples(code1);
-                            cb.addQuadruple("ASIGNACION", var, exp.getResultado());   
-
-                            bloque.setIntermediateCode(cb.create());
-                        }
+                    TypeRecord tipoRec = (TypeRecord) scopeManager.searchType(simbolo.getType().getName().toUpperCase());
+                    
+                    if ( tipoRec.getTypeCampo(nombreCampo) == null ) {
+                        semanticErrorManager.semanticFatalError ("292. El campo del REG: " + nombreCampo +" en [" + campo.getLine() + ":" + campo.getColumn() + "] no ha sido definido.");
                     }
-                }
+
+                    // Si no son mismo tipo. ID.campo debe ser expresion ENTERA
+                    if ( !(tipoRec.getTypeCampo(nombreCampo).getName().toUpperCase().equals(exp.getTipo().getName().toUpperCase())) ){ 
+                            semanticErrorManager.semanticFatalError ("294. La Asignacion: " + identificador +" en [" + id.getLine() + ":" + id.getColumn() + "] no coincide en tipos.");
+                    }
                 
-                RESULT=bloque;
+        
+                    ScopeIF scope = scopeManager.getCurrentScope();
+                    IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
+                    BloqueSentencias bloque = new BloqueSentencias();
+                    Variable var = new Variable(identificador, scope);
+                    var.setAmbito(simbolo.getScope());
+
+                    // Recuperar Despl. CAMPO
+                    HashMap tablaCampos = tipoRec.getTablaCampos();
+                    SymbolVariable simboloCampo = (SymbolVariable) tablaCampos.get(nombreCampo); 
+                    Variable var2 = new Variable(nombreCampo, scope);
+                    var2.setDesplCampo(simboloCampo.getDesplazamiento());
+        
+                    // Calculo expresion
+                    List code1 = exp.getIntermediateCode();
+                    cb.addQuadruples (code1);
+                    cb.addQuadruple("ASIG_REGISTRO", var, var2, exp.getResultado());
+                    bloque.setIntermediateCode(cb.create());                
+                    
+                    RESULT=bloque;
+                }
             :}
     ;
 
@@ -732,15 +714,25 @@ sentIf ::= TIF:id expresion:exp TTHEN sentencias:sent1 sentElse:sent2 {:
 				LabelIF LTRUE = lf.create();
 				LabelIF LFALSE = lf.create();
 
-                cb.addQuadruples(exp.getIntermediateCode());
-                cb.addQuadruple("CMP", exp.getResultado(), new Value(1));
-				cb.addQuadruple("BNZ", LFALSE);
-				cb.addQuadruples(sent1.getIntermediateCode());
-				cb.addQuadruple("BR", LTRUE);
-				cb.addQuadruple("LABEL", LFALSE);
-				cb.addQuadruples(sent2.getIntermediateCode());
-				cb.addQuadruple("LABEL", LTRUE);
-                cb.addQuadruple("NOP", null);
+                if(!sent2.vacio) {
+                    System.out.println("acsdacdscas");
+                    cb.addQuadruples(exp.getIntermediateCode());
+                    cb.addQuadruple("CMP", exp.getResultado(), new Value(1));
+                    cb.addQuadruple("BNZ", LFALSE);
+                    cb.addQuadruples(sent1.getIntermediateCode());
+                    cb.addQuadruple("BR", LTRUE);
+                    cb.addQuadruple("LABEL", LFALSE);
+                    cb.addQuadruples(sent2.getIntermediateCode());
+                    cb.addQuadruple("LABEL", LTRUE);
+                    cb.addQuadruple("NOP", null);
+                } else { /* es un if solo */
+                    cb.addQuadruples(exp.getIntermediateCode());
+                    cb.addQuadruple("CMP", exp.getResultado(), new Value(1));
+                    cb.addQuadruple("BNZ",LFALSE);   // Salto negativo
+                    cb.addQuadruples(sent1.getIntermediateCode());
+                    cb.addQuadruple("LABEL", LFALSE);
+                    cb.addQuadruple ("NOP", null);
+                }
 
                 List code = cb.create();
                 bloque.setIntermediateCode(code);
@@ -753,7 +745,7 @@ sentElse ::= TELSE sentencias:sent {:
         :}
             
         | /*Nada */ {:
-            BloqueSentencias bloque = new BloqueSentencias();
+            BloqueSentencias bloque = new BloqueSentencias(true);
             RESULT = bloque;
 
 :}
@@ -779,7 +771,7 @@ sentES ::= TWRITESTRING:id TPARI TLSTRING:cad TPARD {:
                     BloqueSentencias bloqueSentencias = new BloqueSentencias ();
                     IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
                     cb.addQuadruples(exp.getIntermediateCode());
-                                cb.addQuadruple("WRINT", exp.getResultado());
+                    cb.addQuadruple("WRINT", exp.getResultado());
                     bloqueSentencias.setIntermediateCode(cb.create());
                     bloqueSentencias.setTieneDevuelve(false);
                     RESULT = bloqueSentencias;
@@ -1219,33 +1211,42 @@ expresion::=
             ScopeIF scope = scopeManager.getCurrentScope();
             TypeTableIF tablaTipos = scope.getTypeTable();
 
-            if ( !(scopeManager.containsSymbol(registro + "." + campo)) ) {
+            if ( !(scopeManager.containsSymbol(registro)) ) {
                 semanticErrorManager.semanticFatalError("El tipo registro: " + id1.getLexema() +" en [" + id1.getLine() + ":" + id1.getColumn() + "] no ha sido definida.");
             }
 
             SymbolIF record = scopeManager.searchSymbol(registro);
 
-            System.out.println(record);
-
             TypeRecord typeRecord = (TypeRecord) scopeManager.searchType(record.getType().getName().toUpperCase());
+                            
+            // aniadido
+            Expresion exp = new Expresion(typeRecord.getTypeCampo(campo), id2.getLine(), id2.getColumn());
+            HashMap tablaCampos = typeRecord.getTablaCampos();
+            SymbolVariable simboloCampo = (SymbolVariable) tablaCampos.get(campo); 
 
+            //el campo existe en el registro
             if(!typeRecord.containsCampo(campo)) {
                 semanticErrorManager.semanticFatalError("El registro " + registro + " no contiene el campo " + campo);
             }
 
-            SymbolIF simbolo = scopeManager.searchSymbol(registro+ "." + campo);
-            Expresion exp = new Expresion(simbolo.getType(), id2.getLine(), id2.getColumn());
-            
-            if (simbolo instanceof SymbolConstant) {
-                SymbolConstant simboloCte = (SymbolConstant) simbolo;
-                Value valor = new Value(simboloCte.getValue());
-                exp.setResultado(valor);
-            } else {
-                Variable var = new Variable(registro+ "." + campo, scope);
-                var.setAmbito(simbolo.getScope());
-                exp.setReferencia(true);
-                exp.setResultado(var);
-            }
+            Variable var = new Variable(registro, scope);
+            var.setAmbito(record.getScope());
+            Variable var2 = new Variable(campo, scope);
+            var2.setDesplCampo(simboloCampo.getDesplazamiento());
+
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
+            TemporalFactoryIF tf = new TemporalFactory(scope);
+            Temporal temporal = (Temporal) tf.create();
+            temporal.setDesplazamiento(despl);
+            despl++;
+
+            exp.setReferencia(true);
+            exp.setResultado(temporal);
+
+            cb.addQuadruple ("ACCESO_REGISTRO", temporal, var , var2); 
+            List code=cb.create ();
+            exp.setIntermediateCode (code); 
+            exp.setResultado(temporal);
 
             RESULT = exp;
         :}
