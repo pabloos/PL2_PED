@@ -21,9 +21,7 @@ public class ExecutionEnvironmentEns2001
        ".R0", ".R1", ".R2", ".R3", ".R4", 
        ".R5", ".R6", ".R7", ".R8", ".R9"
     };
-	
-	private static final String[] REGISTERS2 = REGISTERS;
-    
+	    
     private RegisterDescriptorIF registerDescriptor;
     private MemoryDescriptorIF   memoryDescriptor;
     
@@ -49,7 +47,7 @@ public class ExecutionEnvironmentEns2001
      */
     @Override
     public final List<String> getRegisters () {
-        return Arrays.asList (REGISTERS2);
+        return Arrays.asList (REGISTERS);
     }
     
     /**
@@ -119,11 +117,6 @@ public class ExecutionEnvironmentEns2001
             case "BNZ": return traducir_BNZ(quadruple); 
             case "BN": return traducir_BN(quadruple); 
             case "BR": return traducir_BR(quadruple); 
-            case "INC": return traducir_INC(quadruple); 
-            case "CALL": return traducir_CALL(quadruple); 
-            case "RETORNO": return traducir_RETORNO(quadruple); 
-            case "INICIO_SUBPROG": return traducir_INICIO_SUBPROG(quadruple); 
-            case "FIN_SUBPROG": return traducir_FIN_SUBPROG(quadruple); 
             case "WRSTR": return traducir_WRSTR(quadruple); 
             case "WRTLN": return traducir_WRTLN(quadruple); 
             case "WRINT": return traducir_WRINT(quadruple); 
@@ -361,20 +354,14 @@ public class ExecutionEnvironmentEns2001
     private String traducir_ACCESO_REGISTRO(QuadrupleIF quadruple){
         String trad= "; Traducir "+quadruple.toString() +"\n";
         
-        OperandIF rdo = quadruple.getResult();
-        OperandIF oper1 = quadruple.getFirstOperand();
-        OperandIF oper2 = quadruple.getSecondOperand();
-        String resultado="";
-        
-        Variable var2=(Variable) oper2;
-        Variable var=(Variable) oper1;
-        SymbolVariable SimVar=(SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
-        Temporal temp = (Temporal) rdo; 
-        resultado="#-" + temp.getDesplazamiento() + "[.IY]";
+        Variable var2 = (Variable) quadruple.getSecondOperand();
+        Variable var = (Variable) quadruple.getFirstOperand();
+        SymbolVariable SimVar = (SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
+        Temporal temp = (Temporal) quadruple.getResult();
 
         if (SimVar.getScope().getName().equals(var.getScope().getName())) {
             trad= trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar.getDesplazamiento()+var2.getDesplCampo())+"\n";  
-            trad= trad+"MOVE [.A] , "+resultado;
+            trad= trad+"MOVE [.A] , " + "#-" + temp.getDesplazamiento() + "[.IY]";
         }
 
         return trad;
@@ -494,68 +481,11 @@ public class ExecutionEnvironmentEns2001
     }
 
     private String traducir_BR(QuadrupleIF quadruple){
-        OperandIF rdo= quadruple.getResult();
-
-        return "BR /" + cambiarEtiqueta(rdo.toString());
-    }
-
-    private String traducir_INC(QuadrupleIF quadruple){
         String trad=""; 
-        Variable var=(Variable) quadruple.getResult();
-        SymbolVariable SimVar = (SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
-        
-        if (SimVar.getScope().getName().equals(var.getScope().getName())) {
-            trad="INC #-" +SimVar.getDesplazamiento()+"[.IY]";
-        }  
-           
+        OperandIF rdo= quadruple.getResult();
+        trad = "; Salto incondicional " + rdo+"\n";
+        trad="BR /" + cambiarEtiqueta(rdo.toString()); 
         return trad;
-    }
-
-    private String traducir_CALL(QuadrupleIF quadruple){
-        return "";    
-    }
-
-     private String traducir_RETORNO(QuadrupleIF quadruple){
-        String trad= "; Traducir "+quadruple.toString() +"\n";
-        String operador1= "";
-        OperandIF rdo = quadruple.getResult();
-        
-        OperandIF oper1 = quadruple.getFirstOperand();
-        Variable resultado = (Variable) rdo;
-        String etiqRetorno = cambiarEtiqueta(resultado.getEtiqRetorno().getName());
-            
-        if (oper1 instanceof Value){
-            Value cte = (Value) oper1;
-            operador1 = "#" + cte.getValue();
-        }else{
-            if (oper1 instanceof Variable) {
-                Variable var = (Variable) oper1;
-                SymbolVariable SimVar=(SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
-                if ( SimVar.getScope().getName().equals(var.getScope().getName()) ){ 
-                   operador1 = "#-"+SimVar.getDesplazamiento()+"[.IY]";
-                }
-           }else{
-                Temporal temp = (Temporal) oper1;
-                operador1= "#-"+temp.getDesplazamiento()+"[.IY]";
-           }
-        }
-        trad = "MOVE "+operador1 +" , "+RA_VALOR_RETORNO +"\n";
-        trad = trad +"MOVE #"+ etiqRetorno +" , "+CONTADOR_PROGRAMA+"\n";      
-        return trad;      
-     }
- 
-    private String traducir_INICIO_SUBPROG(QuadrupleIF quadruple){
-        String trad=";-- Definicion FUNCION/PROCEDIMIENTO \n";
-        OperandIF rdo = (OperandIF) quadruple.getResult();        
-        
-        String etiq = cambiarEtiqueta(rdo.toString());
-        trad=trad+"BR /FIN_"+etiq+"\n";
-        trad=trad +etiq + " :\n";
-        return trad;      
-    }
-
-    private String traducir_FIN_SUBPROG(QuadrupleIF quadruple){
-        return "";
     }
 
     private String traducir_WRINT (QuadrupleIF quadruple) {

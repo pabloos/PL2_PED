@@ -180,7 +180,6 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
             int bloqueMainRA = 2;
 
             int tam = scope.getSymbolTable().getSize() + scope.getTemporalTable().getSize() + bloqueMainRA;
-            // TemporalIF temp = ax.getTemporal();
 
             IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
             cb.addQuadruple("BEGIN", null, tam);
@@ -238,7 +237,7 @@ cte ::= TIDENTIFICADOR:id TIGUAL cteValor:value {:
             SymbolTableIF symbolTable = scope.getSymbolTable();
 
             if (symbolTable.containsSymbol(identificador)) {
-                semanticErrorManager.semanticFatalError("2. La constante "+ identificador+" en la linea: "+id.getLine()+" ya ha sido declarada");
+                semanticErrorManager.semanticFatalError("La constante "+ identificador+" en la linea: "+id.getLine()+" ya ha sido declarada");
             }
 
             String tipo = "BOOLEAN";
@@ -260,11 +259,11 @@ cte ::= TIDENTIFICADOR:id TIGUAL cteValor:value {:
             String typeOfValue = Utilidades.getTypeOfValue(valor);
 
             if (typeOfValue.equals("noValidType")) {
-                semanticErrorManager.semanticFatalError("La constante " + identificador + " no tiene un tipo valido");
+                semanticErrorManager.semanticFatalError("La constante " + identificador + " en la linea " + id.getLine()+ " no tiene un tipo valido");
             }
         :} ntPtoComa
 
-    | error
+    | error {: semanticErrorManager.semanticFatalError("Error en la declaracion de constantes"); :}
             
     ;
 cteValor ::= TLTRUE:bool {: RESULT=bool; :}      
@@ -295,7 +294,7 @@ tipo ::= TIDENTIFICADOR:id TIGUAL registro:lista {: //aqui registramos el tipo
 			TypeTableIF tablaTipos = scope.getTypeTable();
 
             if (scopeManager.containsType(identificador.toUpperCase())) {
-                semanticErrorManager.semanticFatalError("210. El tipo: " + identificador + " en [" + id.getLine() + ":" + id.getColumn() + "] ya ha sido definida.");
+                semanticErrorManager.semanticFatalError("El tipo: " + identificador + " en " + id.getLine() + ":" + id.getColumn() + " ya ha sido definida.");
             }
 
             TypeRecord tipoRegistro = new TypeRecord(scope, identificador.toUpperCase());
@@ -339,7 +338,7 @@ regCampo ::= TIDENTIFICADOR:id TDOSPTS tipoPrimitivo:tipo {:
             TypeIF tipoPrimitivo = scopeManager.searchType(tipo);
 
             if(!tipo.toUpperCase().equals("BOOLEAN") && !tipo.toUpperCase().equals("INTEGER")) {
-                semanticErrorManager.semanticFatalError ("210. El tipo en el registro : " + identificador + "[" + id.getLine() + ":" + id.getColumn() + "] no es bool o int.");
+                semanticErrorManager.semanticFatalError ("El tipo en el registro : " + identificador + " en " + id.getLine() + ":" + id.getColumn() + " no es BOOLEAN o INT.");
             }
 
             SymbolIF reg = new SymbolVariable(scopeManager.getCurrentScope(), identificador.toUpperCase(), tipoPrimitivo, pos);
@@ -348,7 +347,7 @@ regCampo ::= TIDENTIFICADOR:id TDOSPTS tipoPrimitivo:tipo {:
             RESULT = reg;
         :} ntPtoComa
             
-        | error
+        | error {: semanticErrorManager.semanticFatalError("El campo de registro no esta bien formado"); :}
             
     ;
 
@@ -388,7 +387,7 @@ var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
                         SymbolVariable simboloVR = new SymbolVariable(scope, name.toUpperCase(), scopeManager.searchType(tipo.toUpperCase()), despl);
                         tablaSimbolos.addSymbol(name.toUpperCase(), simboloVR);                                   	
                 } else {
-                    semanticErrorManager.semanticFatalError ("210. La variable: " + name + " en [" + v.getLine() + ":" + v.getColumn() + "] ya ha sido definida.");
+                    semanticErrorManager.semanticFatalError("La variable: " + name + " en " + v.getLine() + ":" + v.getColumn() + " ya ha sido definida.");
                 }
             }
 
@@ -396,7 +395,7 @@ var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
 
         :} ntPtoComa
             
-        | error
+        | error {: semanticErrorManager.semanticFatalError("La variables no estan bien formadas"); :}
             
     ;
 varTipo ::= tipoPrimitivo:tip {: RESULT = tip; :} 
@@ -406,14 +405,9 @@ varTipo ::= tipoPrimitivo:tip {: RESULT = tip; :}
 //
 // DEFINICIÓN DE SUBPROGRAMAS
 //
-subs ::= subs TPROCEDURE {:
-            ScopeIF scope = scopeManager.getCurrentScope();
-
-            semanticErrorManager.semanticDebug("Analizando los subprogramas del ambito " + scope.getName());
-
-        :} subDecl:subDecl cuerpoModulo:bloque {:
+subs ::= subs TPROCEDURE:id subDecl:subDecl cuerpoModulo:bloque {:
             if((subDecl.getEsFuncion() && !bloque.getTieneDevuelve()) || (!subDecl.getEsFuncion() && bloque.getTieneDevuelve())) {
-                semanticErrorManager.semanticFatalError("Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
+                semanticErrorManager.semanticFatalError(id.getLine() + ": Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
             }
 
             RESULT = bloque;
@@ -427,7 +421,6 @@ subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
                 if (scopeManager.containsSymbol(nombreFuncion.toUpperCase())) {
 				    semanticErrorManager.semanticFatalError("350. La funcion "+identificador.getLexema()+" en la linea: "+identificador.getLine()+" ya ha sido declarada");
                 } else {     
-                    // Crear FUNCION en ambito
                     ScopeIF scope = scopeManager.getCurrentScope();
                     TypeTableIF tablaTipos = scope.getTypeTable();
                     SymbolTableIF tablaSimbolos = scope.getSymbolTable();
@@ -478,15 +471,13 @@ subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
                         tipoFuncion.setParametro(simboloVar);
                     }
 
-                    //////////////////
-                    //cerramos ambito
                     scopeManager.closeScope();
 
                     RESULT = declaracion;
                 }
             :} ntPtoComa
             
-        | error
+        | error {: semanticErrorManager.semanticFatalError("Error en la declaracion de subprogramas"); :}
             
     ;
 subParams ::= TPARI TPARD {: 
@@ -539,12 +530,12 @@ subPar ::= TVAR varSeqDeIds:lista TDOSPTS varTipo:tipo {:
 
         :}
             
-        | error
+        | error {: semanticErrorManager.semanticFatalError("Los parametros no estan bien formados"); :}
             
     ;
 subReturn ::= TDOSPTS:s tipoPrimitivo:tipo {: RESULT = tipo; :}
             | {: RESULT = "noType"; :} //Nada 
-            | error
+            | error {: semanticErrorManager.semanticFatalError("No esta bien formado el tipo de retorno de la funcion"); :}
     ;
 
 //
@@ -576,7 +567,7 @@ sentencias ::= sent:sent ntPtoComa sentencias:blq {:
 
 :}
                     
-                | error
+                | error {: semanticErrorManager.semanticFatalError("Error en la formacion de sentencias"); :}
             
     ;
 sent ::= sentAsign:sent {: RESULT = sent; :}          //LISTO
@@ -585,7 +576,7 @@ sent ::= sentAsign:sent {: RESULT = sent; :}          //LISTO
         | sentIf:sent {: RESULT = sent; :} TEND       // LISTO?
         | sentWhile:sent {: RESULT = sent; :} TEND    
         | sentCall:sent {: RESULT = sent; :}   
-        | error
+        | error {: semanticErrorManager.semanticFatalError("Sentencia no permitida"); :}
     ;
 
 sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está ya declarada, que no es una constante, que si es una función el tipo de retorno es igual al tipo de asignacion
@@ -609,7 +600,6 @@ sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está
                         if(!tipo.getName().toUpperCase().equals(exp.getTipo().getName().toUpperCase())){
                             semanticErrorManager.semanticFatalError("Los tipos de la asignación no cuadran");
                         } else {
-                            // Creamos codigo para la sentencia 
                             Variable var = new Variable(identificador.toUpperCase(), scope);
                             var.setAmbito(simbolo.getScope());
                             List code1 = exp.getIntermediateCode();
@@ -656,13 +646,11 @@ sentAsign ::= TIDENTIFICADOR:id TASSIGN expresion:exp {:  //compobamos que está
                     Variable var = new Variable(identificador, scope);
                     var.setAmbito(simbolo.getScope());
 
-                    // Recuperar Despl. CAMPO
                     HashMap tablaCampos = tipoRec.getTablaCampos();
                     SymbolVariable simboloCampo = (SymbolVariable) tablaCampos.get(nombreCampo); 
                     Variable var2 = new Variable(nombreCampo, scope);
                     var2.setDesplCampo(simboloCampo.getDesplazamiento());
         
-                    // Calculo expresion
                     List code1 = exp.getIntermediateCode();
                     cb.addQuadruples (code1);
                     cb.addQuadruple("ASIG_REGISTRO", var, var2, exp.getResultado());
@@ -740,7 +728,6 @@ sentIf ::= TIF:id expresion:exp TTHEN sentencias:sent1 sentElse:sent2 {:
         :};
 
 sentElse ::= TELSE sentencias:sent {:
-            // BloqueSentencias bloque = new BloqueSentencias();
             RESULT = sent;
         :}
             
@@ -759,6 +746,8 @@ sentES ::= TWRITESTRING:id TPARI TLSTRING:cad TPARD {:
             cadenas.add(cad.getLexema());
 
             cb.addQuadruple("WRSTR","cadena"+cadenas.size());
+            cb.addQuadruple("WRTLN", null);
+
             bloqueSentencias.setIntermediateCode(cb.create());
             RESULT = bloqueSentencias;
 :}
@@ -772,6 +761,8 @@ sentES ::= TWRITESTRING:id TPARI TLSTRING:cad TPARD {:
                     IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
                     cb.addQuadruples(exp.getIntermediateCode());
                     cb.addQuadruple("WRINT", exp.getResultado());
+                                cb.addQuadruple("WRTLN", null);
+
                     bloqueSentencias.setIntermediateCode(cb.create());
                     bloqueSentencias.setTieneDevuelve(false);
                     RESULT = bloqueSentencias;
@@ -991,40 +982,43 @@ expresion::=
         :}                 
         | expresion:exp1 TAND:id expresion:exp2 {:
             if ( !(exp1.getTipo() == exp2.getTipo() || !(exp1.getTipo().getName().toUpperCase().equals("BOOLEAN")) || !(exp2.getTipo().getName().toUpperCase().equals("BOOLEAN")) ) ){
-                semanticErrorManager.semanticFatalError ("228. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+                semanticErrorManager.semanticFatalError ("La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
             } else {
                 if (exp1.getTipo()!=null && exp2.getTipo()!=null){
                     if (!exp1.getTipo().getName().toString().toUpperCase().equals("BOOLEAN") || !exp2.getTipo().getName().toString().toUpperCase().equals("BOOLEAN")){
-                      semanticErrorManager.semanticFatalError ("2 Una expresiOn lOgica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
+                      semanticErrorManager.semanticFatalError ("Una expresiOn lOgica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
                     } else {
                         //MEMORIA: Considero l�gica de cortocircuito. Adem�s <=0 es falso, y el resto verdadero.
                         Expresion exp = new Expresion (scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
                         ScopeIF scope = scopeManager.getCurrentScope();
                         TemporalFactory tf = new TemporalFactory (scope);
                         LabelFactory labelFactory= new LabelFactory(scope.getName());
+                        IntermediateCodeBuilder cb=new IntermediateCodeBuilder (scope);
 
                         // Integer numTemporal=scopeManager.getScope().getTemporalTable().getTemporals().size();
                         // Integer posTemp=numTemporal+despl;
                         TemporalIF t = tf.create();
                         // t.setDesplazamiento(posTemp);
+
                         LabelIF lTrue = labelFactory.create();
                         LabelIF lFalse = labelFactory.create();
-                        IntermediateCodeBuilder cb=new IntermediateCodeBuilder (scope);
-                        cb.addQuadruples (exp1.getIntermediateCode());
-                        cb.addQuadruples (exp2.getIntermediateCode());
-                        //Cortocircuito, if a then b else false
+
                         Value Verdadero=new Value(1);
                         Value Falso=new Value(0);
 
-                        cb.addQuadruple ("CMP", Verdadero, exp1.getResultado()); //compara
-                        cb.addQuadruple ("BN",lTrue); //salto negativo
-                        cb.addQuadruple ("ASIGNACION", t, exp2.getResultado());
-                        cb.addQuadruple ("BR",lFalse);//salto incondicional
-                        cb.addQuadruple ("LABEL",lTrue);
-                        cb.addQuadruple ("ASIGNACION", t, Falso);
-                        cb.addQuadruple ("LABEL",lFalse);
-                        exp.setIntermediateCode(cb.create());
+                        cb.addQuadruples(exp1.getIntermediateCode());
+                        cb.addQuadruples(exp2.getIntermediateCode());
+
+                        cb.addQuadruple("CMP", Verdadero, exp1.getResultado());
+                        cb.addQuadruple("BNZ",lTrue); //salto negativo
+                        cb.addQuadruple("ASIGNACION", t, exp2.getResultado());
+                        cb.addQuadruple("BR",lFalse);//salto incondicional
+                        cb.addQuadruple("LABEL",lTrue);
+                        cb.addQuadruple("ASIGNACION", t, Falso);
+                        cb.addQuadruple("LABEL",lFalse);
+                        
                         exp.setResultado(t);
+                        exp.setIntermediateCode(cb.create());
 
                         exp.setTipo(scopeManager.searchType("BOOLEAN"));
 
@@ -1035,46 +1029,80 @@ expresion::=
         :}    
         | expresion:exp1 TMENOR:id expresion:exp2 {: /*comparaciones*/
             //comprobamos todo tipos y demas
-             if ( !(exp1.getTipo() == exp2.getTipo()  ||  !(exp1.getTipo().getName().toUpperCase().equals("INTEGER"))  || !(exp2.getTipo().getName().toUpperCase().equals("INTEGER")) ) ) {
+/*              if ( !(exp1.getTipo() == exp2.getTipo()  ||  !(exp1.getTipo().getName().toUpperCase().equals("INTEGER"))  || !(exp2.getTipo().getName().toUpperCase().equals("INTEGER")) ) ) {
                 semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
 			}
                 Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
                 ScopeIF scope = scopeManager.getCurrentScope();
-				//   TemporalFactoryIF tf = CompilerContext.getTemporalFactory(scope);			
-                TemporalFactory tf = new TemporalFactory (scope);
-	
-                Temporal temporal = (Temporal) tf.create(); 
-                               despl++;
-
-                temporal.setDesplazamiento(despl);
-                IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
-                List code1 = exp1.getIntermediateCode();
-                List code2 = exp2.getIntermediateCode();
-                cb.addQuadruples (code1);
-                cb.addQuadruples (code2);
-                Value verdad = new Value(1);
-                Value falso = new Value(0);
-                //   LabelFactoryIF lf = CompilerContext.getLabelFactory();	
                 LabelFactory lf= new LabelFactory(scope.getName());
-				
+                IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+                TemporalFactory tf = new TemporalFactory(scope);
+
+                Temporal temporal = (Temporal) tf.create(); 
+                                temporal.setDesplazamiento(despl);
+
+                   despl++;
+
+
                 LabelIF LTRUE = lf.create();
-                LabelIF LFIN = lf.create();				
-                // Hacemos cmp al reves para contemplar caso ambos iguales
-                cb.addQuadruple ("CMP", exp1.getResultado(), exp2.getResultado()); 
-                cb.addQuadruple ("BN", LTRUE); 
-                cb.addQuadruple ("ASIGNACION", temporal, falso);
-                cb.addQuadruple ("BR", LFIN);
-                cb.addQuadruple ("LABEL", LTRUE);
-                cb.addQuadruple ("ASIGNACION", temporal, verdad);
-                cb.addQuadruple ("LABEL", LFIN);
+                LabelIF LFIN = lf.create();	
+
+                Value verdad = new Value(1);
+                Value falso = new Value(0);	
+
+                cb.addQuadruples (exp1.getIntermediateCode());
+                cb.addQuadruples (exp2.getIntermediateCode());
+
+                cb.addQuadruple("CMP", exp1.getResultado(), exp2.getResultado()); // Hacemos cmp al reves para contemplar caso ambos iguales
+                cb.addQuadruple("BN", LTRUE); 
+                cb.addQuadruple("ASIGNACION", temporal, falso);
+                cb.addQuadruple("BR", LFIN);
+                cb.addQuadruple("LABEL", LTRUE);
+                cb.addQuadruple("ASIGNACION", temporal, verdad);
+                cb.addQuadruple("LABEL", LFIN);
                                 
-                List code=cb.create ();
-                exp.setResultado (temporal); 
-                exp.setIntermediateCode (code); 
+                exp.setResultado(temporal); 
+                exp.setIntermediateCode(cb.create()); 
 
                 exp.setTipo(scopeManager.searchType("BOOLEAN"));
 
-				RESULT=exp;
+				RESULT = exp; */
+
+                if ( !(exp1.getTipo() == exp2.getTipo())  ||  !(exp1.getTipo().getName().equals("INTEGER"))  || !(exp2.getTipo().getName().equals("INTEGER")) )  {
+                                  semanticErrorManager.semanticFatalError ("232. La expresion: " + id.getLexema() +" en [" + 
+							id.getLine() + ":" + id.getColumn() + "] no es del mismo tipo.");
+			     }else{
+		      	          Expresion exp = new Expresion(scopeManager.searchType("BOOLEAN"), id.getLine(), id.getColumn());
+				  ScopeIF scope = scopeManager.getCurrentScope();
+                TemporalFactory tf = new TemporalFactory(scope);
+                                  Temporal temporal = (Temporal) tf.create(); 
+                                  temporal.setDesplazamiento(despl);
+                                  despl++;
+				  IntermediateCodeBuilderIF cb = new IntermediateCodeBuilder(scope);
+				  List code1 = exp1.getIntermediateCode();
+				  List code2 = exp2.getIntermediateCode();
+				  cb.addQuadruples (code1);
+				  cb.addQuadruples (code2);
+                                  Value verdad = new Value(1);
+                                  Value falso = new Value(0);
+                LabelFactory lf= new LabelFactory(scope.getName());
+                                  LabelIF LTRUE = lf.create();
+        			  LabelIF LFIN = lf.create();				
+                                  // Hacemos cmp al reves para contemplar caso ambos iguales
+                                  cb.addQuadruple ("CMP", exp1.getResultado(), exp2.getResultado()); 
+                                  cb.addQuadruple ("BN", LTRUE); 
+                                  cb.addQuadruple ("ASIGNACION", temporal, falso);
+                                  cb.addQuadruple ("BR", LFIN);
+                                  cb.addQuadruple ("LABEL", LTRUE);
+                                  cb.addQuadruple ("ASIGNACION", temporal, verdad);
+                                  cb.addQuadruple ("LABEL", LFIN);
+                                
+				  List code=cb.create ();
+				  exp.setResultado (temporal); 
+				  exp.setIntermediateCode (code); 
+						
+				  RESULT=exp;
+                 }
                
         :}                
         | expresion:exp1 TDISTINTO:id expresion:exp2 {:
