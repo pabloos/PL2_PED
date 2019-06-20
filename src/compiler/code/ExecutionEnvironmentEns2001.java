@@ -104,7 +104,6 @@ public class ExecutionEnvironmentEns2001
      */
     public String translate (QuadrupleIF quadruple) {      
         switch(quadruple.getOperation()) {
-            case "BEGIN": return traducir_INICIO_PROGRAMA(quadruple); 
             case "HALT": return traducir_FIN_PROGRAMA(quadruple); 
             case "STRING": return traducir_CADENA(quadruple); 
             case "DIV": return traducir_DIV(quadruple); 
@@ -121,49 +120,9 @@ public class ExecutionEnvironmentEns2001
             case "WRTLN": return traducir_WRTLN(quadruple); 
             case "WRINT": return traducir_WRINT(quadruple); 
             case "NOP": return "NOP"; 
-            case "NOT": return traducir_NOT(quadruple); 
         }
 
         return "";
-    }
-
-    private String traducir_NOT(QuadrupleIF quadruple) {
-        OperandIF oper1= quadruple.getResult();
-        OperandIF result = quadruple.getResult();
-        String operador1="";
-
-
-         if (oper1 instanceof Value) {
-            Value cte = (Value) oper1;
-            operador1 = "#" + cte.getValue();
-        } else {
-            if (oper1 instanceof Variable) {
-                Variable var = (Variable) oper1;
-                SymbolVariable SimVar = (SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
-                if ( SimVar.getScope().getName().equals(var.getScope().getName()) ){ 
-                   operador1 = "#-" + SimVar.getDesplazamiento() + "[.IY]";
-                }
-            } else {
-                Temporal temp = (Temporal) oper1;                
-                int desp = temp.getDesplazamiento();
-                operador1 = "#-" + desp + "[.IY]";
-            }
-        }
-
-
-        //BUENOS DIAS: ->>>> TIENES QUE PONER ABAJO UN MOVE  AL RESULTADO 
-        return "NOT " + operador1 + "\n";
-    }
-
-    private String traducir_INICIO_PROGRAMA (QuadrupleIF quadruple) {
-        String trad =   "; INICIO\n" + 
-                        "MOVE .SP, .IX\n" +
-                        "PUSH .IX\n" + 
-                        "PUSH .SR\n" + 
-                        ";SUB .IX\n" +
-                        "MOVE .A, .SP\n";
-
-        return trad;
     }
 
     private String traducir_FIN_PROGRAMA(QuadrupleIF quadruple){ //BIEN

@@ -19,25 +19,19 @@ import es.uned.lsi.compiler.semantic.type.TypeIF;
  * Class for TypeFunction.
  */
 
-public class TypeFunction
-    extends TypeBase
-{   
+public class TypeFunction extends TypeBase {   
     // Definicion de campos del registro
     private TreeMap tablaParametros = new TreeMap();
     private ArrayList listaParametros= new ArrayList();
     private TypeIF tipoRetorno;
     private boolean hayRetorno;
-    private LabelIF etiqSub;
-    private LabelIF etiqSubFin;
     
     /**
      * Constructor for TypeFunction.
      * @param scope The declaration scope.
      */
-    public TypeFunction (ScopeIF scope)
-    {
+    public TypeFunction (ScopeIF scope) {
         super (scope);
-        
     }
 
     /**
@@ -45,14 +39,10 @@ public class TypeFunction
      * @param scope The declaration scope
      * @param name The name of the function.
      */
-    public TypeFunction (ScopeIF scope, String name)
-    {
+    public TypeFunction (ScopeIF scope, String name) {
         super (scope, name);
     }
 
-    //borrada un hashCode y un equals
-
-    // Gestion de parametros de la funcion
     public List getListaParametros(){
         return listaParametros;
     }
@@ -68,43 +58,27 @@ public class TypeFunction
     
     public void setParametro(SymbolVariable par){
         this.listaParametros.add(par);
-    
     }
-    // Gestion parametros retorno
+
     public TypeIF getTipoRetorno(){
         return this.tipoRetorno;
     }
+
     public void setTipoRetorno(TypeIF tretorno){
         this.tipoRetorno=tretorno;
     }
     
-    // Etiquetas Subprograma
-    public LabelIF getEtiqSub(){
-        return this.etiqSub;
-    }
-    public void setEtiqSub(LabelIF etiqSub){
-        this.etiqSub=etiqSub;
-    }
-    
-    // Etiqueta Fin Subprograma
-    public LabelIF getEtiqSubFin(){
-        return this.etiqSubFin;
-    }
-    public void setEtiqSubFin(LabelIF etiqSub){
-        this.etiqSubFin=etiqSub;
-    }
     public TypeIF getTypeParametro(Integer columna){
         Object tipo= this.getTablaParametros().get(columna);
         if (tipo != null && tipo instanceof TypeIF) {
             return (TypeIF) tipo;
         } else return null;
     }
+
     public void setTypeParametro(Integer columna, TypeIF tipo){
         this.getTablaParametros().put(columna, tipo);
-        
     }
     
-    // Anyadir Parametro al procedimiento
     public void addParametro (Integer columna, TypeIF type)   {
         this.getTablaParametros().put(columna, type);
     }
@@ -129,10 +103,12 @@ public class TypeFunction
 
         return true;
     }
+
     // Comprobar que hay sentencia return definida en la funcion
     public boolean getHayRetorno(){
         return this.hayRetorno;
     }
+
     public void setHayRetorno(boolean hayRetorno){
         this.hayRetorno=hayRetorno;
     }
