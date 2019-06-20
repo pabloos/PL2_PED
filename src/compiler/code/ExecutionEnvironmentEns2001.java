@@ -128,8 +128,10 @@ public class ExecutionEnvironmentEns2001
     }
 
     private String traducir_NOT(QuadrupleIF quadruple) {
-        OperandIF oper1= quadruple.getFirstOperand();
+        OperandIF oper1= quadruple.getResult();
+        OperandIF result = quadruple.getResult();
         String operador1="";
+
 
          if (oper1 instanceof Value) {
             Value cte = (Value) oper1;
@@ -148,7 +150,9 @@ public class ExecutionEnvironmentEns2001
             }
         }
 
-        return "NOT " + operador1;
+
+        //BUENOS DIAS: ->>>> TIENES QUE PONER ABAJO UN MOVE  AL RESULTADO 
+        return "NOT " + operador1 + "\n";
     }
 
     private String traducir_INICIO_PROGRAMA (QuadrupleIF quadruple) {
@@ -354,13 +358,14 @@ public class ExecutionEnvironmentEns2001
     private String traducir_ACCESO_REGISTRO(QuadrupleIF quadruple){
         String trad= "; Traducir "+quadruple.toString() +"\n";
         
-        Variable var2 = (Variable) quadruple.getSecondOperand();
-        Variable var = (Variable) quadruple.getFirstOperand();
-        SymbolVariable SimVar = (SymbolVariable) var.getAmbito().getSymbolTable().getSymbol(var.getName());
+        Variable campo = (Variable) quadruple.getSecondOperand();
+        Variable registro = (Variable) quadruple.getFirstOperand();
+
+        SymbolVariable SimVar = (SymbolVariable) registro.getAmbito().getSymbolTable().getSymbol(registro.getName());
         Temporal temp = (Temporal) quadruple.getResult();
 
-        if (SimVar.getScope().getName().equals(var.getScope().getName())) {
-            trad= trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar.getDesplazamiento()+var2.getDesplCampo())+"\n";  
+        if (SimVar.getScope().getName().equals(registro.getScope().getName())) {
+            trad= trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar.getDesplazamiento()+campo.getDesplCampo())+"\n";  
             trad= trad+"MOVE [.A] , " + "#-" + temp.getDesplazamiento() + "[.IY]";
         }
 
