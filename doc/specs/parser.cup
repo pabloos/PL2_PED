@@ -180,6 +180,7 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
                 cb.addQuadruple("STRING", nombre,it.next(), "");
             }
 
+            //Impresion de codigo intermedio
 /*             syntaxErrorManager.syntaxInfo("====> CODIGO INTERMEDIO");
 
             Iterator it = intermediateCode.iterator();
@@ -188,6 +189,8 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
             } */
 
             ax.setIntermediateCode(cb.create());
+
+            scopeManager.closeScope();
 
             RESULT = ax;
         :}
@@ -198,12 +201,7 @@ axiom ::= TMODULE TIDENTIFICADOR:id ntPtoComa {:
 //
 // DEFINICIÓN DE CONSTANTES
 //
-ctes ::= TCONST {: 
-            ScopeIF scope = scopeManager.getCurrentScope();
-
-            semanticErrorManager.semanticDebug("Analizando las constantes del ambito " + scope.getName());
-
-        :} ctesLista  
+ctes ::= TCONST ctesLista  
         | /*nada*/ ;
 
 ctesLista ::= cte ctesLista | cte;
@@ -255,12 +253,7 @@ cteValor ::= TLTRUE:bool {: RESULT=bool; :}
 //
 // DEFINICIÓN DE TIPOS
 //
-tipos ::= TTYPE {:
-            ScopeIF scope = scopeManager.getCurrentScope();
-
-            semanticErrorManager.semanticDebug("Analizando los tipos del ambito " + scope.getName());
-
-        :} tiposLista 
+tipos ::= TTYPE tiposLista 
         | /*nada*/
 	;
 
@@ -337,12 +330,7 @@ regCampo ::= TIDENTIFICADOR:id TDOSPTS tipoPrimitivo:tipo {:
 //
 // DEFINICIÓN DE VARIABLES
 //
-vars ::= TVAR {:
-            ScopeIF scope = scopeManager.getCurrentScope();
-
-            semanticErrorManager.semanticDebug("Analizando las variables del ambito " + scope.getName());
-
-        :} varsLista 
+vars ::= TVAR varsLista 
         | /*Nada*/          
     ;
 
@@ -355,7 +343,7 @@ var ::= varSeqDeIds:lista TDOSPTS varTipo:tipo {:
             TypeTableIF tablaTipos = scope.getTypeTable();
             SymbolTableIF tablaSimbolos = scope.getSymbolTable();
         
-            if (!tablaTipos.containsType(tipo.toUpperCase())) {
+            if (!scopeManager.containsType(tipo.toUpperCase())) {
                 semanticErrorManager.semanticFatalError("el tipo " + tipo + " no ha sido declarado");
             }
 
@@ -399,6 +387,8 @@ subs ::= subs TPROCEDURE:id subDecl:subDecl cuerpoModulo:bloque {:
             if((subDecl.getEsFuncion() && !bloque.getTieneDevuelve()) || (!subDecl.getEsFuncion() && bloque.getTieneDevuelve())) {
                 semanticErrorManager.semanticFatalError(id.getLine() + ": Esto no es una funcion. O falta el devuelve o no hay indicado el tipo del retorno");
             }
+                
+            scopeManager.closeScope();
 
             RESULT = bloque;
         :}
@@ -424,7 +414,6 @@ subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
 
                     simboloFunc.setParametros(parametros);
 
-                    semanticErrorManager.semanticDebug("Aniadiendo el subprograma " + nombreFuncion + " a la tabla de simbolos");
                     tablaSimbolos.addSymbol(nombreFuncion.toUpperCase(), simboloFunc);            
 
                     SubDecl declaracion;
@@ -459,7 +448,6 @@ subDecl ::= TIDENTIFICADOR:identificador subParams:lista subReturn:tipo {:
                         tipoFuncion.setParametro(simboloVar);
                     }
 
-                    scopeManager.closeScope();
 
                     RESULT = declaracion;
                 }
@@ -734,22 +722,27 @@ sentES ::= TWRITESTRING:id TPARI TLSTRING:cad TPARD {:
                 } else {
                     BloqueSentencias bloqueSentencias = new BloqueSentencias ();
                     IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
+                    
                     cb.addQuadruples(exp.getIntermediateCode());
                     cb.addQuadruple("WRINT", exp.getResultado());
-                                cb.addQuadruple("WRTLN", null);
+                    cb.addQuadruple("WRTLN", null);
 
                     bloqueSentencias.setIntermediateCode(cb.create());
                     bloqueSentencias.setTieneDevuelve(false);
+
                     RESULT = bloqueSentencias;
                 }
             }
 :}
         | TWRITELN {:
-            BloqueSentencias bloqueSentencias = new BloqueSentencias ();
+            BloqueSentencias bloqueSentencias = new BloqueSentencias();
             bloqueSentencias.setTieneDevuelve(false);
-            IntermediateCodeBuilder cb = new IntermediateCodeBuilder (scopeManager.getCurrentScope());
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scopeManager.getCurrentScope());
+            
             cb.addQuadruple("WRTLN", null);
+
             bloqueSentencias.setIntermediateCode(cb.create());
+
             RESULT = bloqueSentencias;
 :}                          
     ;
@@ -798,13 +791,25 @@ sentCall ::= TIDENTIFICADOR:id TPARI sentCallParams:lista TPARD {:
             }
 
             RESULT = bloque;
+        :}
 
-:}
-        | TIDENTIFICADOR {:
+        | TIDENTIFICADOR:id {:
             BloqueSentencias bloque = new BloqueSentencias();
-            RESULT = bloque;
 
-:}                           
+            String nombreProcedimiento = id.getLexema().toUpperCase();
+
+            if (!scopeManager.containsType(nombreProcedimiento)) {
+                semanticErrorManager.semanticFatalError("El procedimiento " + id.getLexema() + " en " + id.getLine() + ":" + id.getColumn() + " no ha sido declarada anteriormente");
+            }
+
+            TypeFunction typeProcedure = (TypeFunction) scopeManager.searchType(id.getLexema().toUpperCase());
+
+            if (typeProcedure.getListaParametros().size() > 0) {
+                semanticErrorManager.semanticFatalError("La invocacion del procedimiento " + id.getLexema() + " en " + id.getLine() + ":" + id.getColumn() + " tiene parametors que son necesarios aniadir");
+            }
+
+            RESULT = bloque;
+        :}                           
     ;
 sentCallParams ::= TIDENTIFICADOR:id {:
             Lista lista = new Lista();
@@ -963,7 +968,7 @@ expresion::=
             } else {
                 if (exp1.getTipo()!=null && exp2.getTipo()!=null){
                     if (!exp1.getTipo().getName().toString().toUpperCase().equals("BOOLEAN") || !exp2.getTipo().getName().toString().toUpperCase().equals("BOOLEAN")){
-                      semanticErrorManager.semanticFatalError ("Una expresiOn lOgica debe usar tipos enteros con el operador: " + id.getLexema() + " [" + id.getLine() + ":" + id.getColumn() + "].");
+                      semanticErrorManager.semanticFatalError ("La operacion AND requiere de dos expresiones booleanas" + " [" + id.getLine() + ":" + id.getColumn() + "].");
                     } else {
                         Expresion exp = new Expresion (scopeManager.searchType("INTEGER"), id.getLine(), id.getColumn());
                         ScopeIF scope = scopeManager.getCurrentScope();
@@ -1210,8 +1215,98 @@ expresion::=
             RESULT = exp;
         :}
 
-        | TIDENTIFICADOR TPARI sentCallParams:lista TPARD  /*invocacion*/      {:
+        | TIDENTIFICADOR:idFuncion TPARI sentCallParams:lista TPARD {:
+            ScopeIF scope = scopeManager.getCurrentScope();
+            TypeTableIF typeTable = scope.getTypeTable();
+            SymbolTableIF symbolTable = scope.getSymbolTable();
 
+            IntermediateCodeBuilder cb = new IntermediateCodeBuilder(scope);
+            TemporalFactoryIF tf = new TemporalFactory(scope);
+
+            String nombreFuncion = idFuncion.getLexema().toUpperCase();
+            
+            if (!typeTable.containsType(nombreFuncion)) {  // comprobamos que la funcion ha sido declarada anteriormente
+                semanticErrorManager.semanticFatalError("La funcion " + nombreFuncion + " no existe");
+            }
+
+            TypeFunction type = (TypeFunction) typeTable.getType(nombreFuncion);
+            
+            List parametros = type.getListaParametros();
+
+            Lista parametrosLlamada = lista;
+
+            //comprobamos que el numero de argumentos y de parametros que se le pasan a la funcion coinciden
+            if(parametrosLlamada.size() != parametros.size() ) {
+                semanticErrorManager.semanticFatalError("El numero de argumentos pasado a en [ " + idFuncion.getLine() + ":" + idFuncion.getColumn() +  " no conincide con el numero de parametros de la funcion" );
+            }
+
+            for (int i = 0; i < parametros.size(); i++) {
+                String parametroLlamada = (String) parametrosLlamada.get(i);
+                
+                String nameType;
+
+                SymbolIF symbol;
+
+                if(parametroLlamada.indexOf(".") >= 0) { // es un registro
+                    String[] parts = parametroLlamada.split("\\.");
+
+                    String identificad = parts[0];
+                    
+                    if (!symbolTable.containsSymbol(identificad.toUpperCase())) {
+                        semanticErrorManager.semanticFatalError("El registro: " + identificad + " en " + "no ha sido declarado");
+                    }
+
+                    symbol = symbolTable.getSymbol(identificad.toUpperCase());
+
+                    TypeRecord typeRecord = (TypeRecord) symbol.getType();
+
+                    String nombreDelCampo = parts[1];
+
+                    HashMap<String, SymbolIF> campos = typeRecord.getTablaCampos();
+
+                    if (!typeRecord.containsCampo(nombreDelCampo.toUpperCase()) ) {
+                        semanticErrorManager.semanticFatalError("El campo " + nombreDelCampo + " del registro " + identificad + " no existe");
+                    }
+
+                    SymbolIF campo = campos.get(nombreDelCampo.toUpperCase());
+
+                    TypeIF tipoSimple = scopeManager.searchType(campo.getType().getName().toUpperCase());
+
+                    nameType = tipoSimple.getName();
+                } else {
+                    if (!symbolTable.containsSymbol(parametroLlamada.toUpperCase())) {
+                        semanticErrorManager.semanticFatalError("La variable: " + parametroLlamada + " en " + "no ha sido declarado");
+                    }
+
+                    symbol = symbolTable.getSymbol(parametroLlamada.toUpperCase());
+
+                    nameType = symbol.getType().getName();
+                }
+                
+                SymbolVariable parametro1var = (SymbolVariable) parametros.get(i);
+
+                String parametro1 = parametro1var.getName();
+
+                SymbolIF symbol1 = symbolTable.getSymbol(parametro1.toUpperCase());
+
+                String nameType1 = symbol.getType().getName();
+
+                if (nameType.equals(nameType1)) {
+                    semanticErrorManager.semanticFatalError("La funcion " + nombreFuncion + " no esta siendo invocada con los parametros correctos por su tipo");
+                }
+
+                Temporal temporal = (Temporal) tf.create();
+                temporal.setDesplazamiento(despl);
+                despl++;
+
+                Expresion exp = new Expresion(type.getTipoRetorno() , idFuncion.getLine(), idFuncion.getColumn());
+
+                cb.addQuadruple("NOP");
+                exp.setIntermediateCode(cb.create ()); 
+                exp.setResultado(temporal);
+
+                RESULT = exp;
+            }
         :}                                  
         | error   
     ;
@@ -1263,7 +1358,12 @@ cuerpoModulo ::= ctes tipos vars subs TBEGIN finalModulo:bloque {:
     ;
 finalModulo ::= sentencias:bloque TEND TIDENTIFICADOR {:
                     RESULT = bloque;
-                :} ntPtoComa 
+                :} ntPtoComa {:                    
+                
+                ScopeIF scope = scopeManager.getCurrentScope();
+
+
+:}
         | error
             
     ;

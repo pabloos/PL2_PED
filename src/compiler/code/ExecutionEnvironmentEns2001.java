@@ -77,25 +77,6 @@ public class ExecutionEnvironmentEns2001
         return memoryDescriptor;
     }
 
-    public static final String PUNTERO_MARCO = ".IY"; // Indica punto de entrada al RA
-    public static final String VINCULO_CONTROL = ".IX"; // Recuperar RA
-    public static final String STACK_POINTER = ".SP";
-    public static final String ACUMULADOR = ".A";
-    public static final String CONTADOR_PROGRAMA = ".PC";
-    
-    /* Registro RA: 
-         1 - VALOR DE RETORNO - para funciones
-         2 - DIRECCION DE RETORNO
-         3 - VINCULO DE CONTROL - apunta al RA anterior en la pila
-         4 - VINCULO DE ACCESO - apunta al RA de la funcion padre
-         5 - DIRECCION DE RETORNO REFERENCIA - anpunta a los par�metro pasados por REF
-    */
-    public static final int numDireccionesRA = 5;
-    public static final String RA_VINCULO_CONTROL   = "#-3[" + PUNTERO_MARCO + "]";
-    public static final String RA_VINCULO_ACCESO    = "#-2[" + PUNTERO_MARCO + "]";
-    public static final String RA_DIRECCION_RETORNO = "#-1[" + PUNTERO_MARCO + "]";
-    public static final String RA_VALOR_RETORNO     = "#0["  + PUNTERO_MARCO + "]";
-
     /**
      * Translate a quadruple into a set of final instruction according to 
      * execution environment. 
@@ -324,7 +305,7 @@ public class ExecutionEnvironmentEns2001
         Temporal temp = (Temporal) quadruple.getResult();
 
         if (SimVar.getScope().getName().equals(registro.getScope().getName())) {
-            trad= trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar.getDesplazamiento()+campo.getDesplCampo())+"\n";  
+            trad= trad+"SUB "+".IY"+" , #"+(SimVar.getDesplazamiento()+campo.getDesplCampo())+"\n";  
             trad= trad+"MOVE [.A] , " + "#-" + temp.getDesplazamiento() + "[.IY]";
         }
 
@@ -414,42 +395,28 @@ public class ExecutionEnvironmentEns2001
             }
         }
         
-        // Se trata despu�s la asignaci�n por temas del acumulador
         if (SimVar1.getScope().getName().equals(var1.getScope().getName())) {
-            trad = trad+"SUB "+PUNTERO_MARCO+" , #"+(SimVar1.getDesplazamiento()+var2.getDesplCampo())+"\n";  
-        } /* else {
-            // Variable en otro ambito 
-            trad = trad + "MOVE /" + SimVar1.getScope().getLevel() + " , .R1 \n";
-            trad= trad+"SUB .R1 , #"+(SimVar1.getDesplazamiento()+var2.getDesplCampo())+"\n";  
-        } */
+            trad = trad+"SUB "+".IY"+" , #"+(SimVar1.getDesplazamiento()+var2.getDesplCampo())+"\n";  
+        } 
+
         trad= trad+"MOVE "+operador2+" , [.A]";
         return trad;
     }
     
     private String traducir_ETIQUETA(QuadrupleIF quadruple){
-        OperandIF rdo = quadruple.getResult();
-        String trad = cambiarEtiqueta(rdo.toString()) + " :";
-        return trad;
+        return quadruple.getResult().toString() + " :";
     }
 
     private String traducir_BNZ(QuadrupleIF quadruple){
-        OperandIF rdo= quadruple.getResult();
-
-        return "BNZ /" + cambiarEtiqueta(rdo.toString());
+        return "BNZ /" + quadruple.getResult().toString();
     }
 
     private String traducir_BN(QuadrupleIF quadruple){
-        OperandIF rdo= quadruple.getResult();
-
-        return "BN /" + cambiarEtiqueta(rdo.toString());
+        return "BN /" + quadruple.getResult().toString();
     }
 
     private String traducir_BR(QuadrupleIF quadruple){
-        String trad=""; 
-        OperandIF rdo= quadruple.getResult();
-        trad = "; Salto incondicional " + rdo+"\n";
-        trad="BR /" + cambiarEtiqueta(rdo.toString()); 
-        return trad;
+        return "BR /" + quadruple.getResult().toString();
     }
 
     private String traducir_WRINT (QuadrupleIF quadruple) {
@@ -457,7 +424,7 @@ public class ExecutionEnvironmentEns2001
         String trad= "";
         OperandIF rdo=quadruple.getResult();
         
-        if(rdo  instanceof Value){
+        if(rdo instanceof Value){
             Value cte=(Value) rdo;
             resultado = "#" + cte.getValue();
         }else{
@@ -479,20 +446,11 @@ public class ExecutionEnvironmentEns2001
     }
     
      private String traducir_WRSTR(QuadrupleIF quadruple) {
-        String trad = "";
-        String operador = quadruple.getResult().toString();
-        trad= "WRSTR /" + operador + "; escribir cadena";
-        return trad;
+        return "WRSTR /" + quadruple.getResult().toString() + "; escribir cadena";
     }
 
     private String traducir_WRTLN(QuadrupleIF quadruple) {
-        String trad = "";
-        trad = "; Escribimos un salto de linea\n";
-        trad = trad + "WRSTR /cadena0";
-        return trad;
+        return "WRSTR /cadena0";
     }
-  
-    private String cambiarEtiqueta(String etiq){
-       return etiq.replace("_", "");
-   }
+
 }
