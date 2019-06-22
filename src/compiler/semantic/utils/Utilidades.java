@@ -8,10 +8,6 @@ import java.util.TreeMap;
 
 import compiler.syntax.nonTerminal.Lista;
 import compiler.syntax.nonTerminal.Parametro;
-import es.uned.lsi.compiler.semantic.type.TypeIF;
-
-import es.uned.lsi.compiler.semantic.*;
-import es.uned.lsi.compiler.semantic.type.*;
 
 public class Utilidades {
     /** Creates a new instance of Utilidades */
@@ -31,20 +27,25 @@ public class Utilidades {
     public static List getListFromTreeMap(TreeMap tree) {
         ArrayList list = new ArrayList();
         Iterator it = tree.values().iterator();
+        
         while (it.hasNext()) {
             list.add(it.next());
         }
+
         return list;
     }
     
      public static List getListFromHashMap(HashMap map) {
         ArrayList list = new ArrayList();
         Iterator it = map.values().iterator();
+        
         while (it.hasNext()) {
             list.add(it.next());
         }
+        
         return list;
     }
+
     public static List ordenaParametros(Lista lista) {
         TreeMap tablaParametros = new TreeMap();
 
@@ -55,22 +56,4 @@ public class Utilidades {
 
         return getListFromTreeMap(tablaParametros);
     }
-    public static TypeIF searchType(ScopeManagerIF sm, String tipoBuscado) {
-        //Busca em todos los scopes a ver si existe el tipo, buscandolo a partir de su string
-        
-        List scopes = sm.getOpenScopes();
-        Iterator it = scopes.iterator();
-        Scope unScope;
-        TypeTable unaTT;
-        boolean found = false;
-        while (it.hasNext() && !found) {
-            unScope = (Scope) it.next();
-            unaTT = (TypeTable) unScope.getTypeTable();
-            if (unaTT.containsType(tipoBuscado)) {
-                return unaTT.getType(tipoBuscado);
-            }
-        }
-        return null;
-    }
-
   }

@@ -29,8 +29,7 @@ public class Label
     {
         return name;
     }
-    
-    /**
+        /**
      * Compares this object with another one.
      * @param other the other object.
      * @return true if both objects has the same properties.

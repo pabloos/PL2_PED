@@ -13,7 +13,6 @@ public class SymbolVariable
 {  
     private int desplazamiento;
     private boolean referencia;
-    private int size;       // Tamanyo para conjuntos
 
     /**
      * Constructor for SymbolVariable.
@@ -42,14 +41,6 @@ public class SymbolVariable
 
     public void setReferencia(boolean referencia) {
         this.referencia = referencia;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
     }
     
     public int getDesplazamiento() {

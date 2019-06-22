@@ -68,42 +68,10 @@ public class TypeFunction extends TypeBase {
         this.tipoRetorno=tretorno;
     }
     
-    public TypeIF getTypeParametro(Integer columna){
-        Object tipo= this.getTablaParametros().get(columna);
-        if (tipo != null && tipo instanceof TypeIF) {
-            return (TypeIF) tipo;
-        } else return null;
-    }
-
     public void setTypeParametro(Integer columna, TypeIF tipo){
-        this.getTablaParametros().put(columna, tipo);
-    }
-    
-    public void addParametro (Integer columna, TypeIF type)   {
-        this.getTablaParametros().put(columna, type);
-    }
-    
-    public String getTypes ()  {    
-        return this.getTablaParametros().toString();   
+        this.tablaParametros.put(columna, tipo);
     }
         
-    public boolean comparaParametros(Lista listaPar){
-        // comprobar el numdero de parametros
-        ArrayList listaArg = (ArrayList) Utilidades.getListFromTreeMap(tablaParametros);
-        if (!(listaPar.size()==listaArg.size()) )  return false;
-        
-        // comprobar el tipo de cada parametro: La lista de parametros viene en orden inverso.
-        int j=listaArg.size();
-        for (int i=0; i<listaArg.size(); i++) {
-            TypeIF arg = (TypeIF) listaArg.get(i);
-            Expresion exp = (Expresion) listaPar.get(--j);
-            TypeIF par = (TypeIF) exp.getTipo();
-            if (! arg.equals(par) ) return false;
-        }
-
-        return true;
-    }
-
     // Comprobar que hay sentencia return definida en la funcion
     public boolean getHayRetorno(){
         return this.hayRetorno;

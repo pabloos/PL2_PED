@@ -86,22 +86,4 @@ public class Expresion extends NonTerminal {
     public void setReferencia(boolean referencia) {
         this.referencia = referencia;
     }
-    
-    // Conversi�n de tipos
-    public boolean castingTipos(Expresion exp1, Expresion exp2){
-        boolean error = true;
-        
-        if ( (exp1.tipo.getName().equals("INTEGER") &&  exp2.tipo.getName().equals("POINTER"))) {    		
-            error = false;
-    	} else if ( (exp1.tipo.getName().equals("POINTER") && exp2.tipo.getName().equals("INTEGER"))) {
-            error = false;
-    	} else if ( (exp1.tipo.getName().equals("POINTER") && exp2.tipo.getName().equals("POINTER"))) {
-            error = false;
-    	} else if ((exp1.tipo.getName().equals("INTEGER") && exp2.tipo.getName().equals("INTEGER"))) {
-    		error = false;
-        } else {
-            error = true;
-    	}
-        return error;     	
-    }
 }

@@ -47,7 +47,6 @@ public class TypeRecord
         super (record.getScope (), record.getName ());
     }
 
-    // Gestion de campos del registro
     public HashMap<String, SymbolIF> getTablaCampos(){
         return tablaCampos;
     }
@@ -56,31 +55,23 @@ public class TypeRecord
         this.tablaCampos=tablaCampos;
     }
     
-    public TypeIF getTypeCampo(String name){
-        SymbolIF simbolo= (SymbolIF) this.getTablaCampos().get(name);
-        if (simbolo != null) {
-            TypeIF tipo= simbolo.getType();
-            if (tipo != null && tipo instanceof TypeIF) {
-                   return (TypeIF) tipo;
-            } else
-                return null;
-        }else
-                return null;
-        
-    }
-    
-    // Anyadir Campos al Registro
-    public void addCampos (String name, SymbolIF simbolo)
-    {
+    public void addCampos (String name, SymbolIF simbolo){
         this.tablaCampos.put(name, simbolo);
     
     }
     public void setSize(int size){
-        this.size=size;
+        this.size = size;
     }
     public int getSize(){
         return this.size;
     }
+    
+    public TypeIF getTypeCampo(String name){
+        SymbolIF simbolo = (SymbolIF) this.getTablaCampos().get(name);
+        
+        return simbolo.getType();
+    }
+
     /**
      * Compares this object with another one.
      * @param other the other object.
@@ -90,5 +81,4 @@ public class TypeRecord
     public boolean containsCampo (String name) {
         return this.tablaCampos.containsKey(name);
     }
-
 }

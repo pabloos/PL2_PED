@@ -58,32 +58,7 @@ public class Variable
     {
         this.name = name;
     }
-    public LabelIF getEtiqRetorno ()
-    {
-        return etiqRetorno;
-    }
 
-    /**
-     * Sets The name.
-     * @param name The name to set.
-     */
-    public void setEtiqSub (LabelIF name)
-    {
-        this.etiqSub = name;
-    }
-    public LabelIF getEtiqSub ()
-    {
-        return etiqSub;
-    }
-
-    /**
-     * Sets The name.
-     * @param name The name to set.
-     */
-    public void setEtiqRetorno (LabelIF name)
-    {
-        this.etiqRetorno = name;
-    }
 
     /**
      * Returns the scope.
@@ -129,15 +104,7 @@ public class Variable
                ((name  != null) ? (name  == aVariable.name)  : aVariable.name  == null);
     }
 
-    /**
-     * Returns a hash code for the object.
-     */
-    public int hashCode ()
-    {
-        // TODO: Student Work (optional)
-        return 255 * scope.hashCode() +
-               ((name != null)? name.hashCode () : 0);
-    } 
+
     // Gestion de tabla desplaz.
     public HashMap getTablaDespl(){
         return tablaDespl;
